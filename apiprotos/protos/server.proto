@@ -1,0 +1,17 @@
+syntax= "proto3";
+
+package acumioserver;
+
+message ConcatInputRequest {
+  repeated string input = 1;
+  string separator = 2;
+}
+
+message ConcatInputResponse {
+  string concatenation = 1;
+}
+
+service Acumio {
+  rpc ConcatInputs(ConcatInputRequest) returns (ConcatInputResponse) {}
+}
+

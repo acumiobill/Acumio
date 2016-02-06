@@ -1,0 +1,27 @@
+The AcumioServer depends on the apiprotos. Before trying to build
+from the Make file in this directory, you should build the apiprotos.
+
+In addition, you will need to create an obj directory underneath this
+directory.
+
+The overall directory structure should look something like:
+
+    apiprotos/
+        Makefile
+        README
+        gen-src/ {empty directory initially}
+        lib/ {empty directory initially}
+        protos/
+            server.proto
+    AcumioServer/
+        Makefile
+        README
+        src/
+            AcumioServer.cpp
+        obj/ {empty directory initially}
+    AcumioClient/
+        Makefile
+        README
+        obj/ {empty directory initially}
+        src/
+            AcumioClient.cpp
