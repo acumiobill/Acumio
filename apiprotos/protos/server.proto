@@ -1,6 +1,9 @@
 syntax= "proto3";
 
-package acumioserver;
+import "user.proto";
+
+package acumio.server;
+option java_package = "com.acumio.server.proto";
 
 message ConcatInputRequest {
   repeated string input = 1;
@@ -11,7 +14,32 @@ message ConcatInputResponse {
   string concatenation = 1;
 }
 
-service Acumio {
+/**
+  Realistically, we need to expand this to account for the permissions
+  of the person doing the searching. Also, we might want to work a
+  bit on the search criteria. The API described below is pretty
+  flexible however, without killing us. All of the criteria can be
+  performed by simple index-searches. We will want to amend it however,
+  to handle large responses later.
+ */
+message GetUsersRequest {
+  string userNameExactMatch = 1;
+  string userNamePrefix = 2;
+  repeated string identityNamePrefixes = 3;
+  repeated string identityNameExactMatches = 4;
+  repeated acumio.model.Principal identityPrefixes = 5;
+  repeated acumio.model.Principal identityExactMatches = 6;
+  // The responseLimit gives an upper bound on the number of
+  // users returned.
+  uint32 responseLimit = 7;
+}
+
+message GetUsersResponse {
+  repeated acumio.model.User user = 1;
+}
+
+service Server {
   rpc ConcatInputs(ConcatInputRequest) returns (ConcatInputResponse) {}
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse) {}
 }
 

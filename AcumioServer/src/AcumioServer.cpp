@@ -18,11 +18,13 @@ using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
-using acumioserver::Acumio;
-using acumioserver::ConcatInputRequest;
-using acumioserver::ConcatInputResponse;
+using acumio::server::GetUsersRequest;
+using acumio::server::GetUsersResponse;
+using acumio::server::ConcatInputRequest;
+using acumio::server::ConcatInputResponse;
 
-class AcumioServerImpl final : public Acumio::Service {
+namespace acumio {
+class ServerImpl final : public server::Server::Service {
   Status ConcatInputs(ServerContext* context, const ConcatInputRequest* request,
                       ConcatInputResponse* response) override {
     std::string result;
@@ -37,10 +39,19 @@ class AcumioServerImpl final : public Acumio::Service {
     response->set_concatenation(result);
     return Status::OK;
   }
+
+  Status GetUsers(ServerContext* context, const GetUsersRequest* request,
+                  GetUsersResponse* response) override {
+    // STUB: IMPLEMENT ME!
+    return Status::OK;
+  }
+
 };
 
+}
+
 void RunServer() {
-  AcumioServerImpl service;
+  acumio::ServerImpl service;
   std::string server_address("localhost:1782");
   ServerBuilder builder;
   int port = 0;

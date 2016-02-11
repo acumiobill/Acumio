@@ -8,7 +8,7 @@ GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
 PLUGIN_ARG := --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN_PATH)
 
 PROTOS_PATH = ../apiprotos/protos
-GENSRC_PATH = ../apiprotos/gen-src
+GENCPP_PATH = ../apiprotos/gen-cpp
 PROTOLIB_DIR = ../apiprotos/lib
 
 vpath %.proto $(PROTOS_PATH)
@@ -16,13 +16,13 @@ vpath %.proto $(PROTOS_PATH)
 all: AcumioServer.exe
 	echo "Generated AcumioServer.exe"
 
-SERVER_DEPS = $(PROTOLIB_DIR)/server.pb.o $(PROTOLIB_DIR)/server.grpc.pb.o obj/AcumioServer.o
+SERVER_DEPS = $(PROTOLIB_DIR)/user.pb.o $(PROTOLIB_DIR)/server.pb.o $(PROTOLIB_DIR)/server.grpc.pb.o obj/AcumioServer.o
 AcumioServer.exe: $(SERVER_DEPS)
 	$(CXX) $^ $(LDFLAGS) -o $@
 
 obj/AcumioServer.o: src/AcumioServer.cpp
 	echo "Building obj/AcumioServer.o from src/AcumioClient.cpp"
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENSRC_PATH) -c -o obj/AcumioServer.o src/AcumioServer.cpp
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) -c -o obj/AcumioServer.o src/AcumioServer.cpp
 
 clean:
 	rm -f AcumioServer.exe *.o src/*.o obj/*.o

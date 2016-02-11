@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package acumio.model;
+option java_package = "com.acumio.model.user.proto";
+
+
+/**
+ The IdentityType allows us to determine how we denote various
+ types of principals.
+ */
+enum IdentityType {
+  UNKNOWN = 0;
+  ACUMIO = 1;
+  GMAIL = 2;
+  FACEBOOK = 3;
+  KERBEROS = 4; // Often used in KERBEROS + LDAP setups.
+  HDFS = 5;
+  /**
+   Unclear if we want to support a 'plugin' notion of
+   Authentication Service types with various names,
+   or if we simply want to know how to enumerate them
+   with a few standards. It's simpler right now to assume
+   that we will just enumerate them and only work with the
+   ones that we know about. We will keep it simple for now,
+   but if we want to allow a plugin mechanism, we can specify
+   an "OTHER" IdentityType and have a name attribute used
+   to distinguish between the various flavors of "OTHER".
+  */
+}
+
+/**
+ When presented with a principal of a given type, the Acumio Server
+ maintains a map keyed by IdentityType and with the value leading to an
+ authentication mechanism. For example, given a GMAIL identityType, we
+ know how to get a GMAIL client-type OAuth2 token and use that to verify
+ a user.
+
+ The AuthenticationConfiguration is something that can be specified
+ as a JSON message and used to initialize our internal representation
+ of an Authenticator.
+ */
+message AuthenticationConfiguration {
+  message ConfigItem {
+    message Param {
+      string lvalue = 1;
+      string rvalue = 2;
+    }
+    repeated Param param = 1;
+  }
+
+  // The key should correspond to a PrincipalType; i.e., one of
+  // 0: UNKNOWN, 1: ACUMIO, 2: GMAIL, etc.
+  map<uint32, ConfigItem> authenticators = 1;
+}
+
+message Principal {
+  IdentityType type = 1;
+  string name = 2;
+}
+
+message FullPrincipal {
+  Principal principal = 1;
+  /**
+   The authenticationToken is either a token provided by
+   an authentication service - such as an OAuth2 token from
+   gmail - or an encrypted password.
+
+   If the authenticationToken is given as an empty string
+   then authentication is not enabled - instead, we merely
+   recognize it as an identity.
+   */
+  string authenticationToken = 2;
+}
+
+/**
+  A Subject in this context is a collection of authenticatable
+  entities all associated with a single real-world entity.
+  The real-world entity is typically a Person, though it may
+  also be a process or a group. Note that this differs somewhat
+  from the standard notion of a Subject specified in
+  javax.security.auth.Subject.
+ */
+message Subject {
+  // When giving permissions to perform various operations, we
+  // give permissions to a set of Principals. However, we prefer
+  // to use only Principals that are identified as a primaryIdentity
+  // for some Subject that we have identified.
+  //
+  // In addition, we will tend to use ACUMIO identities as the
+  // primary identity even if the authentication mechanisms
+  // enabled for the user do not include ACUMIO authentication.
+  Principal primaryIdentity = 1;
+  repeated Principal otherIdentities = 2;
+}
+
+message User {
+  enum AcumioRole {
+    UNKNOWN = 0;
+    ADMIN = 1;
+    USER = 2;
+    PROCESS = 3;
+  }
+  // Full name of user or process as identified by the user or owner of process.
+  string name = 1;
+  AcumioRole role = 2;
+  string contactEmail = 3;
+  Subject identity = 4;
+}

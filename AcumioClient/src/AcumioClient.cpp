@@ -13,60 +13,37 @@
 #include <grpc++/security/credentials.h>
 
 #include "server.grpc.pb.h"
+#include "AcumioClient.h"
 
 using namespace std;
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
-using acumioserver::ConcatInputRequest;
-using acumioserver::ConcatInputResponse;
-using acumioserver::Acumio;
+using acumio::server::ConcatInputRequest;
+using acumio::server::ConcatInputResponse;
+using acumio::server::Server;
 
 namespace acumio {
 
-class ClientConnector {
- public:
-  ClientConnector(std::shared_ptr<Channel> channel)
-      : stub_(Acumio::NewStub(channel)) {}
+std::string ClientConnector::concat(const std::vector<std::string>& inputs,
+                                    const std::string& separator) {
+  ConcatInputRequest request;
+  for (auto it = inputs.begin(); it != inputs.end(); ++it) {
+    request.add_input(*it);
+  }
+  request.set_separator(separator);
 
-  std::string concat(const std::vector<std::string>& inputs,
-                     const std::string& separator) {
-    ConcatInputRequest request;
-    for (auto it = inputs.begin(); it != inputs.end(); ++it) {
-      request.add_input(*it);
-    }
-    request.set_separator(separator);
+  ConcatInputResponse response;
 
-    ConcatInputResponse response;
+  ClientContext context;
 
-    ClientContext context;
+  Status status = stub_->ConcatInputs(&context, request, &response);
 
-    Status status = stub_->ConcatInputs(&context, request, &response);
-
-    if (!status.ok()) {
-      cout << "Error: " << status.error_message();
-      return "";
-    }
-
-    return response.concatenation();
+  if (!status.ok()) {
+    cout << "Error: " << status.error_message();
+    return "";
   }
 
- private:
-  std::unique_ptr<Acumio::Stub> stub_;
-};
-
-} // end namespace acumio
-
-int main(int argc, char** argv) {
-  acumio::ClientConnector client(
-      grpc::CreateChannel("localhost:1782",
-                          grpc::InsecureChannelCredentials()));
-
-  std::vector<std::string> inputs;
-  inputs.push_back("!!!Hello");
-  inputs.push_back("World!!!");
-  std::string response = client.concat(inputs, " ");
-  cout << "Response: " << response << endl;
-
-  return 0;
+  return response.concatenation();
 }
+} // end namespace acumio
