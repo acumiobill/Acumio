@@ -1,0 +1,3 @@
+# Ignore generated .o  and .exe files.
+*.o
+*.exe
