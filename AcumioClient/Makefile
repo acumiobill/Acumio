@@ -1,6 +1,11 @@
 CXX = g++
 CPPFLAGS += -I/usr/local/include -pthread
-CXXFLAGS += -std=c++11
+# Non-Debug Version.
+CXXFLAGS += -std=c++11 -Wall
+# Debug Version.
+CXXFLAGS += -std=c++11 -Wall -g
+#DEFINES += -D_GLIBCXX_USE_CXX11_ABI=0
+# TODO: User lgrpc++ instead of lgrpc++_unsecure
 LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc -lgpr -lprotobuf -lpthread -ldl
 PROTOC = protoc
 GRPC_CPP_PLUGIN = grpc_cpp_plugin
@@ -21,10 +26,10 @@ AcumioCommandLine.exe: $(CLIENT_DEPS)
 	$(CXX) $^ $(LDFLAGS) -o $@
 
 obj/AcumioCommandLine.o: src/AcumioCommandLine.cpp src/AcumioClient.h
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) -c -o obj/AcumioCommandLine.o src/AcumioCommandLine.cpp
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) -c -o obj/AcumioCommandLine.o src/AcumioCommandLine.cpp
 
 obj/AcumioClient.o: src/AcumioClient.cpp src/AcumioClient.h
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) -c -o obj/AcumioClient.o src/AcumioClient.cpp
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) -c -o obj/AcumioClient.o src/AcumioClient.cpp
 
 clean:
 	rm -f AcumioClient.exe *.o src/*.o obj/*.o

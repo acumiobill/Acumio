@@ -1,7 +1,11 @@
 CXX = g++
 CPPFLAGS += -pthread -I/usr/local/include
-CXXFLAGS += -std=c++11
-LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc++ -lgrpc -lprotobuf -lpthread
+# Non-Debug Version.
+#CXXFLAGS += -std=c++11
+# Deug version
+CXXFLAGS += -std=c++11 -g
+# TODO: replace lgrpc++_unsecure with lgrpc++.
+LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc -lgpr -lprotobuf -lpthread -ldl
 PROTOC = protoc
 GRPC_CPP_PLUGIN = grpc_cpp_plugin
 GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
@@ -18,13 +22,13 @@ all: $(OUTLIB_DIR)/server.pb.o $(OUTLIB_DIR)/server.grpc.pb.o $(OUTLIB_DIR)/user
 	echo "Generated user.pb.o, server.pb.o and server.grpc.pb.o"
 
 $(OUTLIB_DIR)/server.pb.o: $(GENCPP_PATH)/server.pb.cc $(GENCPP_PATH)/user.pb.cc
-	$(CXX) -c -o $(OUTLIB_DIR)/server.pb.o $(CPPFLAGS) -I$(GENCPP_PATH) $(CXXFLAGS) $(LDFLAGS) $(GENCPP_PATH)/server.pb.cc
+	$(CXX) -c -o $(OUTLIB_DIR)/server.pb.o $(CPPFLAGS) -I$(GENCPP_PATH) $(DEFINES) $(CXXFLAGS) $(LDFLAGS) $(GENCPP_PATH)/server.pb.cc
 
 $(OUTLIB_DIR)/user.pb.o: $(GENCPP_PATH)/user.pb.cc
-	$(CXX) -c -o $(OUTLIB_DIR)/user.pb.o $(CPPFLAGS) -I$(GENCPP_PATH) $(CXXFLAGS) $(LDFLAGS) $(GENCPP_PATH)/user.pb.cc
+	$(CXX) -c -o $(OUTLIB_DIR)/user.pb.o $(CPPFLAGS) -I$(GENCPP_PATH) $(DEFINES) $(CXXFLAGS) $(LDFLAGS) $(GENCPP_PATH)/user.pb.cc
 
 $(OUTLIB_DIR)/server.grpc.pb.o: $(GENCPP_PATH)/server.grpc.pb.cc $(GENCPP_PATH)/user.pb.cc
-	$(CXX) -c -o $(OUTLIB_DIR)/server.grpc.pb.o $(CPPFLAGS) -I$(GENCPP_PATH) $(CXXFLAGS) $(LDFLAGS) $(GENCPP_PATH)/server.grpc.pb.cc
+	$(CXX) -c -o $(OUTLIB_DIR)/server.grpc.pb.o $(CPPFLAGS) -I$(GENCPP_PATH) $(DEFINES) $(CXXFLAGS) $(LDFLAGS) $(GENCPP_PATH)/server.grpc.pb.cc
 
 $(GENCPP_PATH)/server.grpc.pb.cc: $(PROTOS_PATH)/server.proto
 	$(PROTOC) -I $(PROTOS_PATH) --grpc_out=$(GENCPP_PATH)/ $(PLUGIN_ARG) $(PROTOS_PATH)/server.proto

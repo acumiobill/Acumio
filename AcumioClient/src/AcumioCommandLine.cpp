@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <string>
-
 #include <grpc++/grpc++.h>
 #include <grpc++/security/credentials.h>
 
@@ -20,9 +19,10 @@ using grpc::Channel;
 using grpc::ClientContext;
 
 int main(int argc, char** argv) {
-  acumio::ClientConnector client(
-      grpc::CreateChannel("localhost:1782",
-                          grpc::InsecureChannelCredentials()));
+  //auto creds = grpc::SslCredentials(grpc::SslCredentialsOptions());
+  auto creds = grpc::InsecureChannelCredentials();
+  auto channel = grpc::CreateChannel("Flying-Ubuntu-Dragon:1782", creds);
+  acumio::ClientConnector client(channel);
 
   std::vector<std::string> inputs;
   inputs.push_back("!!!Hello");

@@ -1,0 +1,73 @@
+This project is for building an Acumio Metadata server and associated
+client libraries as well as a command-line utility for exercising the
+client libraries. At the time of this writing, both server and client
+are written in C++, though the eventual plan is to support a Java
+based client as well as a Node.js client. It is unclear if we will
+maintain a C++ client.
+
+There are a few prerequisites for this process to work:
+
+	* Google's protobuf libraries - specifically proto3
+		* Currently, C++ and Java generation are required.
+		* The Java libraries require JDK 1.6, but we will
+		  need JDK 1.8 support anyway for SSL support in grpc.
+		* Later, we will need the JavaScript libraries.
+	* Google's grpc libraries
+		* Currently, C++ libraries are required.
+		* Later, we will additionally need to be able to generate
+		  Java versions, and in order to support SSL/TSL, this will
+		  require JDK 1.8.
+		* Later, we will also need to be able to generate node.js
+		  libraries.
+	* An SSL Certificate. (NOT YET ENABLED).
+		* For testing purposes, this can be self-signed, but we will
+		  later need to get "real" ones signed from a CA signing
+		  authority.
+		* Getting CA signed certificates takes between minutes and
+		  hours from the signing authority. For this reason, Acumio
+		  will later want to become our own signing authority so
+		  that we can issue certificates for our installations in
+		  an automated fashion.
+		* When installing certificates, it's helpful to know that
+		  these typically live in /etc/ssl/certs (public key) and
+		  /etc/ssl/private (private key). However, the private
+		  keys are only readable by either root or members of
+		  the unix group ssl-cert (at least on Ubuntu). So either,
+                  the user that the Acumio server runs as has to be a member
+                  of ssl-cert, or the files have to be copied (securely!)
+                  somewhere that the Acumio server can read.
+
+
+Installation instructions for Google's protobuf libraries is found here:
+    https://github.com/google/protobuf/releases
+Installation for Google's grpc libraries is found here:
+    https://github.com/grpc/grpc/blob/release-0_11/INSTALL.
+Installation instructions for SSL Certificates (assumes Ubuntu machine):
+    https://help.ubuntu.com/lts/serverguide/certificates-and-security.html
+
+Assuming these requirements are met, it should then be possible to build
+and deploy both client and server. The overall directory structure will
+look something like this:
+
+   apiprotos/
+       Makefile
+       {other stuff}
+   AcumioServer/
+       Makefile
+       {other stuff}
+   AcumioClient/
+       Makefile
+       {other stuff}
+
+You can build using the provided Makefiles. You will need to first build
+the apiprotos libraries. After the apiprotos are built, you can build
+the AcumioServer and the AcumioClient in either order.
+
+The output of the AcumioServer's Makefile is an executable:
+    AcumioServer.exe
+The output of the AcumioClient's Makefile is a set of libraries and an
+executable:
+    AcumioCommandLine.exe
+
+If all goes well, you should be able to first start the AcumioServer.exe
+by invoking it directly, then invoke the AcumioCommandLine.exe.

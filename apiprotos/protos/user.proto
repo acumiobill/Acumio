@@ -63,7 +63,7 @@ message FullPrincipal {
   /**
    The authenticationToken is either a token provided by
    an authentication service - such as an OAuth2 token from
-   gmail - or an encrypted password.
+   gmail - or an encrypted password plus salt.
 
    If the authenticationToken is given as an empty string
    then authentication is not enabled - instead, we merely

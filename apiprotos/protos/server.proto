@@ -14,32 +14,140 @@ message ConcatInputResponse {
   string concatenation = 1;
 }
 
-/**
-  Realistically, we need to expand this to account for the permissions
-  of the person doing the searching. Also, we might want to work a
-  bit on the search criteria. The API described below is pretty
-  flexible however, without killing us. All of the criteria can be
-  performed by simple index-searches. We will want to amend it however,
-  to handle large responses later.
- */
-message GetUsersRequest {
-  string userNameExactMatch = 1;
-  string userNamePrefix = 2;
-  repeated string identityNamePrefixes = 3;
-  repeated string identityNameExactMatches = 4;
-  repeated acumio.model.Principal identityPrefixes = 5;
-  repeated acumio.model.Principal identityExactMatches = 6;
-  // The responseLimit gives an upper bound on the number of
-  // users returned.
-  uint32 responseLimit = 7;
+message GetSelfUserRequest {
+  // Eventually, this will be an empty message; we should be able
+  // to get the identity from the ServerContext (on the server
+  // side).
+  string userName = 1;
 }
 
-message GetUsersResponse {
+message GetSelfUserResponse {
+  acumio.model.User user = 1;
+}
+
+/**
+  The API below will eventually be restricted based on Role-Type,
+  with only an Admin role having access. At the moment however,
+  the API is open.
+
+  In the search criteria below, it is possible to specify more than
+  one search term, and we may in fact get multiple hits for a given
+  User. The effect of this will be to affect the ordering of returned
+  results. When deciding the ordering of results, we apply a score
+  for the match result, and higher scores are given priority.
+
+  (Note that the exact scores are subject to change).
+
+  An exact match on userName is worth 100 points.
+  An exact match on an identity is worth 50 points.
+  An exact match on an identityName is worth 40 points.
+
+  A wild-card match on userName is worth:
+     40 * (length of non-wild-carded portion of search string) /
+          (length of matched userName)
+
+  A wild-card match on identity is worth:
+     20 * (length of non-wild-carded portion of search string) /
+          (length of matched identityName)
+
+  A wild-card match on identityName is worth:
+     16 * (length of non-wild-carded portion of search string) /
+          (length of matched identityName)
+
+  For scores that are tied, the tie is broken by the lexical ordering
+  of the userName attribute.
+ */
+message UserSearchRequest {
+  // Use '*' as part of a string to match any sequence of characters.
+  // So for example, to match all userNames, just use the string "*",
+  // and to match all userNames beginning with the letter 'A', use
+  // the string "A*". 
+  // At the moment, wildcards can only be trailing wild-cards, providing
+  // a prefix-search. If there is a non-trailing '*' in the search,
+  // it is treated as a literal.
+  string userName = 1;
+
+  // When specifying an identity, and wanting to allow for multiple
+  // matches based on a single type of principal (such as, all
+  // GMAIL IdentityTypes starting with the letter A), just enter
+  // a name for the identity part using the '*' wildcard.
+  // At the moment, wildcards can only be trailing wild-cards, providing
+  // a prefix-search.
+  repeated acumio.model.Principal identity = 2;
+  repeated string identityName = 3;
+
+  // The responseLimit gives an upper bound on the number of
+  // users returned.
+  uint32 responseLimit = 4;
+
+  // When query results are limited by the responseLimit attribute,
+  // it is often the desire to be able to page through the results
+  // by issuing queries that skip the results already returned. You
+  // need two pieces of information for this: the minimum query score
+  // returned from the client and the userName of the last User
+  // returned on prior invocations. Given a queryScoreUpperBound,
+  // only scores matching or lower than the upper bound are excepted.
+  // In addition, if a userNameLowerBound is presented, then for
+  // users with a score matching the upper bound, those users will be
+  // returned only when their name comes lexically later than the
+  // upper bound.
+  // So, given a user u, it will be returned iff:
+  //    score(u) > 0 and
+  //    (score(u) < queryScoreUpperBound or
+  //     (score(u) = qeryScoreUpperBound and
+  //      u.userName > userNameLowerBound))
+  uint32 queryScoreUpperBound = 5;
+  string userNameLowerBound = 6;
+}
+
+message UserSearchResponse {
   repeated acumio.model.User user = 1;
+  uint32 minQueryScore = 2;
+  bool moreResults = 3;
+}
+
+message CreateUserRequest {
+  acumio.model.User user = 1;
+  // This is optional since it is perfectly legitimate to never
+  // create an Acumio password for a user. It simply means that
+  // other means of authentication are going to be used.
+  string acumioPassword = 2;
+}
+
+message CreateUserResponse {
+  // Intentionally Empty.
+}
+
+message RemoveUserRequest {
+  string userName = 1;
+}
+
+message RemoveUserResponse {
+  // Intentionally Empty.
+}
+
+
+message UpdateUserRequest {
+  string userNameToModify = 1;
+  acumio.model.User updatedUser = 2;
+  bool alsoUpdatePassword = 3;
+  // The password should be in the clear in this message.
+  // We rely on SSL to encrypt it over the wire, and then
+  // we will store it encrypted in the server. This is
+  // ignored if alsoUpdatePassword is false.
+  string updatedAcumioPassword = 4;
+}
+
+message UpdateUserResponse {
+  // Intentionally Empty.
 }
 
 service Server {
   rpc ConcatInputs(ConcatInputRequest) returns (ConcatInputResponse) {}
-  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse) {}
+  rpc GetSelfUser(GetSelfUserRequest) returns (GetSelfUserResponse) {}
+  rpc UserSearch(UserSearchRequest) returns (UserSearchResponse) {}
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
+  rpc RemoveUser(RemoveUserRequest) returns (RemoveUserResponse) {}
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {}
 }
 
