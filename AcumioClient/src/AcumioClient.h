@@ -16,7 +16,7 @@
 
 using namespace std;
 using grpc::Channel;
-using acumio::server::Server;
+using acumio::model::server::Server;
 
 namespace acumio {
 

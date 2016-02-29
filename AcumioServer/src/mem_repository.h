@@ -33,6 +33,36 @@ template <class EltType>
 class MemRepository {
  public:
   typedef KeyExtractorInterface<EltType> Extractor;
+  // A few considerations:
+  // First:
+  // If we have a well-written trie (patricia-trie) structure,
+  // it will be more efficient. Since the std::map uses a red-black tree
+  // implementation, with a thousand elements in the map, 10 comparisons
+  // are required to find the leaves of the tree. If each comparison is
+  // a string-compare, this can be a bit costly. The cost would be
+  // O(log(n) * m) where n is the number of elements and m is the length
+  // of the string. By contrast, a trie structure would require only
+  // O(m) compares.
+  // Second:
+  // We need thread-safe access to this content, particularly in the case
+  // of a multiply-indexed dataset. However, locking the entire structure
+  // is cost-prohibitive. An alternative is to partition the maps into
+  // chunks such that, if a map contains n elements, each chunk will
+  // contain O(sqrt(n)) elements, and then there is a map that selects
+  // which of the chunks you need to go in. The super-map is of course,
+  // of size O(sqrt(n)). Now, when a mutation occurs, you only need to
+  // lock the specific chunk(s) involved rather than the entire
+  // structure. A caveat is that occasionally, the chunk boundaries need
+  // to be adjusted. This can be detected and performed by a background
+  // process.
+  // Third:
+  // Having a direct hash-map access might also be helpful based on
+  // primary-key lookup. However, if we have a well-written
+  // patricia-trie, this will not really be required.
+  // Fourth:
+  // Some indexes, such as indexes based on keyword search, will be
+  // expensive to perform up-front. For those indices, it is better
+  // to have a background process that does the indexing operation.
   typedef std::map<std::unique_ptr<Comparable>, int32_t,
                    acumio::functional::pointer_less<Comparable>> RepositoryMap;
 

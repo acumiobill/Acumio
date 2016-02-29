@@ -1,0 +1,230 @@
+syntax = "proto3";
+
+import "names.proto";
+
+package acumio.model;
+option java_package = "com.acumio.model";
+
+// This is a primitive attribute corresponding directly to a SQL-99
+// char attribute with a fixed length. So for example, this might be
+// a char(10) attribute.
+// 
+// To be clear: this specifies a Type for an attribute rather than
+// an actual attribute.
+message FixedStringType {
+  // If an attribute is of FixedStringType with a length == L then
+  // we expect that the attribute is a string, and that the length
+  // of the string is exactly L. If a value is given that is less
+  // than L for string, the suffix is padded with spaces. It is not
+  // expected to be legal to provide a string with a length
+  // greater than L.
+  uint32 length = 1;
+  // Typically, the length in characters specifies a length in bytes.
+  // However, for some encodings, there may be variable length encoding
+  // or multiple bytes per character. The length in characters for a
+  // FixedStringType is conclusively specified by length, but the length
+  // in bytes may vary.
+  //
+  // The default here is false, implying we expect 1 byte per character. If
+  // true, we typically expect multi-byte chars, but in rare cases, we could
+  // actually get a more compact form. If this is true, all it really implies
+  // is that we cannot expect the length to be in bytes.
+  // c.f. NLS_LENGTH_SEMANTICS parameter in Oracle (defaults to BYTES).
+  bool multi_byte_chars = 2;
+  // The encoding attribute specifies the character set, and if not specified,
+  // we assume UTF-8. The value of the string should correspond to an IANA
+  // registered named of a character set. The name can either be the listed
+  // name for the character set, or a "preferred" name, or an alias.
+  // (See: www.iana.org/assignments/character-sets/character-sets.xml).
+  string encoding = 3; 
+}
+
+// This is an attribute mimicing the SQL-99 type varchar with a maximum
+// length. Example: varchar(256).
+message VarcharType {
+  // The maximum length (in characters) that can be assumed by a string
+  // of the given type.
+  uint32 max_length = 1;
+
+  // See FixedStringType.multi_byte_chars for a definition.
+  bool multi_byte_chars = 2;
+
+  // See FixedStringType.encoding for a definition.
+  string encoding = 3;
+}
+
+// This represents a primitive string type, but using perhaps an alternative
+// encoding for the contents. If encoding is UTF-8, this will basically just
+// be a string attribute. An attribute of type CharSequenceType would encode
+// the actual string contents using bytes, if represented in proto.
+message CharSequenceType {
+  string encoding = 1;
+}
+
+// An attribute with type FixedPointNumberType is used to represent a numerical
+// value with a maximal number of digits of precision and a given scale.
+// This is common in Oracle: for example, a column of type number(25,10)
+// specifies a numeric value with 25 digits of precision and 10 decimal
+// places to the right of the zero.
+//
+// For a given precision and scale, the maximum value that can be represented
+// is 10^(precision-scale) - 10^(-scale). Similar, the minimum value is
+// - 10^(precision - scale) + 10^(-scale). The smallest difference in
+// absolute value is 10^(-scale). Scale values can be negative so that you can
+// represent larger numbers with a larger scale than 1 between values. For
+// example, a scale of -2 indicates that the smallest difference between
+// values is 100.
+message FixedPointNumberType {
+  uint32 precision = 1;
+  int32 scale = 2;
+}
+
+// An anonymous Enumeration type specifies both a set of strings and
+// corresponding integer values associated with the strings.
+// The wire-representation of an EnumType will give the integer value,
+// but a display of the EnumType will use the string value.
+message EnumType {
+  message Pair {
+    string name = 1;
+    int32 value = 2;
+  }
+  repeated Pair name_value = 2;
+}
+
+message SimpleType {
+  enum Kind {
+    UNKNOWN = 0;
+    BOOL  = 1;
+    INT32 = 2;     // 32 bit signed integer
+    INT64 = 3;     // 64 bit signed integer
+    STRING = 4;    // Assumed UTF-8 or subset of UTF-8 encoding.
+    BYTES = 5;     // Arbitrary length array of bytes.
+    DOUBLE = 6;    // Follows semantics for double from Java.
+    FLOAT = 7;     // Follows semantics for float from Java.
+    UINT32 = 8;    // 32 bit unsigned integer.
+    UINT64 = 9;    // 64 bit unsigned integer.
+    STRING16 = 10; // UTF-16 based String.
+    BYTE = 11;     // Single 8-bit value.
+  }
+
+  oneof type_kind {
+    Kind primitive = 1;
+    FixedStringType fixed = 2;
+    VarcharType varchar = 3;
+    CharSequenceType char_sequence = 4;
+    FixedPointNumberType fixed_number = 5;
+    EnumType enum_type = 6;
+  }
+}
+
+message SimpleValue {
+  SimpleType type = 1;
+  oneof value_type {
+    bool bool_val = 2;
+    // Use this also to represent EnumType values.
+    int32 int32_val = 3;
+    // Use this also to represent FixedPointNumberType: The value here
+    // should be represented as the actual intended value * 10^scale.
+    // So, for a FixedPointNumberType with scale 2 and value 161.01,
+    // we would use the value 16101 here and simply recognize that
+    // the actual intended value is 16101*10^(-scale). The same rule
+    // applies for negative scale values.
+    int64 int64_val = 4;
+    // Use this also to represent VarCharType, CharSequenceType.
+    string string_val = 5;
+    // Use this to represent both BYTES and STRING16 types.
+    bytes bytes_val = 6;
+    double double_val = 7;
+    float float_val = 8;
+    // Use this also to represent BYTE simple type.
+    uint32 uint32_val = 9;
+    uint64 uint64_val = 10;
+  }
+}
+
+// An attribute is "Simple" if it does not require having knowledge of
+// a namespace to define it, and if it is not a repeated attribute.
+message SimpleAttribute {
+  SimpleType type = 1;
+  string name = 2;
+}
+
+message SimpleMap {
+  // Note that floating-point keys have semantics that are not
+  // entirely clear. From the standpoint of our type system however,
+  // they are perfectly fine: it's just that the resolution of
+  // equality is not always clear.
+  SimpleType key = 1;
+  // Gives the type of value for a given key.
+  SimpleType value = 2;
+  // Indicates that the value type for a given key may be repeated.
+  bool value_type_repeated = 3;
+}
+
+message MapType {
+  // Note that floating-point keys have semantics that are not
+  // entirely clear. From the standpoint of our type system however,
+  // they are perfectly fine: it's just that the resolution of
+  // equality is not always clear.
+  // TODO: Consider support for non-simple type keys. However, it
+  // might not be appropriate for a wire or storage format. Proto3
+  // for example, only supports simple types that are not
+  // floating-point.
+  SimpleType key = 1;
+  // The value type is defined as a reference to a type-defined type.
+  QualifiedName value = 2;
+  // Indicates that the value type for a given key may be repeated.
+  bool value_type_repeated = 3;
+}
+
+message RepeatedType {
+  oneof type_kind {
+    SimpleType simple_type = 1;
+    SimpleMap simple_map_type = 2;
+    MapType map_type = 3;
+    QualifiedName predefined_type = 4;
+  }
+}
+
+message Attribute {
+  oneof type_kind {
+    SimpleType simple_type = 1;
+    SimpleMap simple_map_type = 2;
+    MapType map_type = 3;
+    // Since StructuredTypes (introduced below) are always introduced
+    // with a QualifiedName, an attribute can effectively be a structured
+    // attribute.
+    QualifiedName predefined_type = 4;
+    RepeatedType repeated_type = 5;
+  }
+
+  string name = 6;
+}
+
+// Introduces the structured type and introduces a fully qualified name for
+// the new type. Unlike prior types, StructuredTypes cannot be presented
+// in an anonymous fashion: they must be given distinct typenames.
+// The names for each attribute must be distinct.
+message StructuredType {
+  QualifiedName name = 1;
+  repeated Attribute attribute = 2;
+}
+
+// Similar to StructuredType, but attributes are limited to SimpleAttributes.
+message RelationalType {
+  QualifiedName name = 1;
+  repeated SimpleAttribute attribute = 2;
+}
+
+// Introduces a psuedonym for a given type - like a standard
+// typedef mechanism.
+message TypeDefBinding {
+  oneof type_kind {
+    SimpleType simple_type  = 1;
+    SimpleMap simple_map_type = 2;
+    MapType map_type = 3;
+    QualifiedName predefined_type = 4;
+    RepeatedType repeated_type = 5;
+  }
+  QualifiedName name = 6;
+}

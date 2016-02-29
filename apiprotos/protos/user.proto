@@ -1,32 +1,10 @@
 syntax = "proto3";
 
+import "configuration.proto";
+
 package acumio.model;
-option java_package = "com.acumio.model.user.proto";
+option java_package = "com.acumio.model";
 
-
-/**
- The IdentityType allows us to determine how we denote various
- types of principals.
- */
-enum IdentityType {
-  UNKNOWN = 0;
-  ACUMIO = 1;
-  GMAIL = 2;
-  FACEBOOK = 3;
-  KERBEROS = 4; // Often used in KERBEROS + LDAP setups.
-  HDFS = 5;
-  /**
-   Unclear if we want to support a 'plugin' notion of
-   Authentication Service types with various names,
-   or if we simply want to know how to enumerate them
-   with a few standards. It's simpler right now to assume
-   that we will just enumerate them and only work with the
-   ones that we know about. We will keep it simple for now,
-   but if we want to allow a plugin mechanism, we can specify
-   an "OTHER" IdentityType and have a name attribute used
-   to distinguish between the various flavors of "OTHER".
-  */
-}
 
 /**
  When presented with a principal of a given type, the Acumio Server
@@ -40,21 +18,35 @@ enum IdentityType {
  of an Authenticator.
  */
 message AuthenticationConfiguration {
-  message ConfigItem {
-    message Param {
-      string lvalue = 1;
-      string rvalue = 2;
-    }
-    repeated Param param = 1;
-  }
 
   // The key should correspond to a PrincipalType; i.e., one of
   // 0: UNKNOWN, 1: ACUMIO, 2: GMAIL, etc.
-  map<uint32, ConfigItem> authenticators = 1;
+  map<uint32, Configuration> authenticator = 1;
 }
 
 message Principal {
-  IdentityType type = 1;
+
+  enum Type {
+    UNKNOWN = 0;
+    ACUMIO = 1;
+    GMAIL = 2;
+    FACEBOOK = 3;
+    KERBEROS = 4; // Often used in KERBEROS + LDAP setups.
+    HDFS = 5;
+    ORACLE = 6;
+    /**
+     Unclear if we want to support a 'plugin' notion of
+     Authentication Service types with various names,
+     or if we simply want to know how to enumerate them
+     with a few standards. It's simpler right now to assume
+     that we will just enumerate them and only work with the
+     ones that we know about. We will keep it simple for now,
+     but if we want to allow a plugin mechanism, we can specify
+     an "OTHER" Principal.Type and have a name attribute used
+     to distinguish between the various flavors of "OTHER".
+    */
+  }
+  Type type = 1;
   string name = 2;
 }
 
@@ -69,7 +61,7 @@ message FullPrincipal {
    then authentication is not enabled - instead, we merely
    recognize it as an identity.
    */
-  string authenticationToken = 2;
+  string authentication_token = 2;
 }
 
 /**
@@ -89,8 +81,8 @@ message Subject {
   // In addition, we will tend to use ACUMIO identities as the
   // primary identity even if the authentication mechanisms
   // enabled for the user do not include ACUMIO authentication.
-  Principal primaryIdentity = 1;
-  repeated Principal otherIdentities = 2;
+  Principal primary_identity = 1;
+  repeated Principal other_identities = 2;
 }
 
 message User {
@@ -103,6 +95,6 @@ message User {
   // Full name of user or process as identified by the user or owner of process.
   string name = 1;
   AcumioRole role = 2;
-  string contactEmail = 3;
+  string contact_email = 3;
   Subject identity = 4;
 }

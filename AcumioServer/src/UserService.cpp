@@ -38,8 +38,9 @@ grpc::Status UserService::GetSelfUser(const std::string& user_name,
   return grpc::Status::OK;
 }
 
-grpc::Status UserService::UserSearch(const server::UserSearchRequest* request,
-                                     server::UserSearchResponse* response) {
+grpc::Status UserService::UserSearch(
+    const model::server::UserSearchRequest* request,
+    model::server::UserSearchResponse* response) {
   // STUB: TODO: IMPLEMENT ME!
   // Hold off on this one a bit. It's rather complicated. Or perhaps,
   // just implement a slimmed down version of it.

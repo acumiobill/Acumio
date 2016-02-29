@@ -1,9 +1,12 @@
 syntax= "proto3";
 
+import "dataset.proto";
+import "names.proto";
+import "repository.proto";
 import "user.proto";
 
-package acumio.server;
-option java_package = "com.acumio.server.proto";
+package acumio.model.server;
+option java_package = "com.acumio.model.server";
 
 message ConcatInputRequest {
   repeated string input = 1;
@@ -18,7 +21,7 @@ message GetSelfUserRequest {
   // Eventually, this will be an empty message; we should be able
   // to get the identity from the ServerContext (on the server
   // side).
-  string userName = 1;
+  string user_name = 1;
 }
 
 message GetSelfUserResponse {
@@ -65,7 +68,7 @@ message UserSearchRequest {
   // At the moment, wildcards can only be trailing wild-cards, providing
   // a prefix-search. If there is a non-trailing '*' in the search,
   // it is treated as a literal.
-  string userName = 1;
+  string user_name = 1;
 
   // When specifying an identity, and wanting to allow for multiple
   // matches based on a single type of principal (such as, all
@@ -74,11 +77,11 @@ message UserSearchRequest {
   // At the moment, wildcards can only be trailing wild-cards, providing
   // a prefix-search.
   repeated acumio.model.Principal identity = 2;
-  repeated string identityName = 3;
+  repeated string identity_name = 3;
 
   // The responseLimit gives an upper bound on the number of
   // users returned.
-  uint32 responseLimit = 4;
+  uint32 response_limit = 4;
 
   // When query results are limited by the responseLimit attribute,
   // it is often the desire to be able to page through the results
@@ -96,14 +99,14 @@ message UserSearchRequest {
   //    (score(u) < queryScoreUpperBound or
   //     (score(u) = qeryScoreUpperBound and
   //      u.userName > userNameLowerBound))
-  uint32 queryScoreUpperBound = 5;
-  string userNameLowerBound = 6;
+  uint32 query_score_upper_bound = 5;
+  string user_name_lower_bound = 6;
 }
 
 message UserSearchResponse {
   repeated acumio.model.User user = 1;
-  uint32 minQueryScore = 2;
-  bool moreResults = 3;
+  uint32 min_query_score = 2;
+  bool more_results = 3;
 }
 
 message CreateUserRequest {
@@ -111,7 +114,7 @@ message CreateUserRequest {
   // This is optional since it is perfectly legitimate to never
   // create an Acumio password for a user. It simply means that
   // other means of authentication are going to be used.
-  string acumioPassword = 2;
+  string acumio_password = 2;
 }
 
 message CreateUserResponse {
@@ -119,7 +122,7 @@ message CreateUserResponse {
 }
 
 message RemoveUserRequest {
-  string userName = 1;
+  string user_name = 1;
 }
 
 message RemoveUserResponse {
@@ -128,26 +131,147 @@ message RemoveUserResponse {
 
 
 message UpdateUserRequest {
-  string userNameToModify = 1;
-  acumio.model.User updatedUser = 2;
-  bool alsoUpdatePassword = 3;
+  string user_name_to_modify = 1;
+  acumio.model.User updated_user = 2;
+  bool also_update_password = 3;
   // The password should be in the clear in this message.
   // We rely on SSL to encrypt it over the wire, and then
   // we will store it encrypted in the server. This is
   // ignored if alsoUpdatePassword is false.
-  string updatedAcumioPassword = 4;
+  string updated_acumio_password = 4;
 }
 
 message UpdateUserResponse {
   // Intentionally Empty.
 }
 
+message GetRepositoryRequest {
+  // This is often a URI. In any case, repository_name + type should uniquely
+  // identify a repository within Acumio. We "name" all repositories in Acumio.
+  // Support for search by uri can occur later.
+  string repository_name = 1;
+  acumio.model.Repository.Type type = 2;
+}
+
+message GetRepositoryResponse {
+  acumio.model.Repository repository = 1;
+}
+
+message ListRepositoriesRequest {
+  uint32 list_max = 1;
+  string start_after_name = 2;
+  acumio.model.Repository.Type start_after_type = 3;
+}
+
+message ListRepositoriesResponse {
+  repeated acumio.model.Repository repository = 1;
+}
+
+message CreateRepositoryRequest {
+  acumio.model.Repository repository = 1;
+}
+
+message CreateRepositoryResponse {
+  // Intentionally Empty.
+}
+
+message UpdateRepositoryRequest {
+  string repository_name = 1;
+  acumio.model.Repository.Type type = 2;
+  acumio.model.Repository repository = 3;
+}
+
+message UpdateRepositoryResponse {
+  // Intentionally Empty.
+}
+
+message RemoveRepositoryRequest {
+  string repository_name = 1;
+  acumio.model.Repository.Type type = 2;
+}
+
+message RemoveRepositoryResponse {
+  // Intentionally Empty.
+}
+
+message CreateDatasetRequest {
+  Dataset dataset = 1;
+}
+
+message CreateDatasetResponse {
+  // Intentionally Empty.
+}
+
+message GetDatasetRequest {
+  // TODO: Consider how we want to handle descriptions of Datasets.
+  //       Do we want to always send it back with the GetDatasetRequest?
+  //       Fine for UI client, but not helpful for engines that do not
+  //       care about description.
+
+  // One physical name should identify a single dataset. A process trying
+  // to understand a query written in SQL will want to retrieve multiple
+  // datasets simultaneously.
+  repeated QualifiedName physical_name = 1;
+}
+
+message GetDatasetResponse {
+  // Expect one dataset per requested dataset. The return order should match
+  // the requested order.
+  repeated Dataset dataset = 1;
+}
+
+message RemoveDatasetRequest {
+  repeated QualifiedName physical_name = 1;
+}
+
+message RemoveDatasetResponse {
+  // Intentionally Empty.
+}
+
+// TODO: Add SearchDatasetRequest/Response
+
+message UpdateDatasetRequest {
+  // The key-based lookup of the Dataset we are modifying.
+  QualifiedName physical_name = 1;
+  // What we want to change it to.
+  Dataset dataset = 2;
+}
+
+message UpdateDatasetResponse {
+  // Intentionally Empty.
+}
+
+// TODO: Consider separating these services into "micro" services, each
+//       working with a subset of the APIs. Note that these would still
+//       probably need to be deployed on the same machine, because of
+//       the need for quick cross-service data information, but we
+//       should make that determination separately.
+//       Note that streaming responses - not just responses streamed
+//       by virtue of getting chunks of data at a time - will
+//       already need to be put on separate services. They can however,
+//       still share the same memory model.
 service Server {
   rpc ConcatInputs(ConcatInputRequest) returns (ConcatInputResponse) {}
-  rpc GetSelfUser(GetSelfUserRequest) returns (GetSelfUserResponse) {}
-  rpc UserSearch(UserSearchRequest) returns (UserSearchResponse) {}
+// User APIs.
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
+  rpc GetSelfUser(GetSelfUserRequest) returns (GetSelfUserResponse) {}
   rpc RemoveUser(RemoveUserRequest) returns (RemoveUserResponse) {}
   rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {}
+  rpc UserSearch(UserSearchRequest) returns (UserSearchResponse) {}
+// Repository APIs.
+  rpc CreateRepository(CreateRepositoryRequest) returns
+      (CreateRepositoryResponse) {}
+  rpc GetRepository(GetRepositoryRequest) returns (GetRepositoryResponse) {}
+  rpc ListRepositories(ListRepositoriesRequest) returns
+      (ListRepositoriesResponse) {}
+  rpc RemoveRepository(RemoveRepositoryRequest) returns
+      (RemoveRepositoryResponse) {}
+  rpc UpdateRepository(UpdateRepositoryRequest) returns
+      (UpdateRepositoryResponse) {}
+// Dataset APIs.
+  rpc CreateDataset(CreateDatasetRequest) returns (CreateDatasetResponse) {}
+  rpc GetDataset(GetDatasetRequest) returns (GetDatasetResponse) {}
+  rpc RemoveDataset(RemoveDatasetRequest) returns (RemoveDatasetResponse) {}
+  rpc UpdateDataset(UpdateDatasetRequest) returns (UpdateDatasetResponse) {}
 }
 

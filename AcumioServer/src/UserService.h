@@ -25,10 +25,12 @@ class UserService {
   UserService(std::unique_ptr<crypto::EncrypterInterface> encrypter,
               std::unique_ptr<crypto::SaltGeneratorInterface> salt_generator);
   ~UserService();
-  grpc::Status GetSelfUser(const std::string& user_name, model::User* user);
-  grpc::Status UserSearch(const server::UserSearchRequest* request,
-                          server::UserSearchResponse* response);
-  grpc::Status CreateUser(const model::User& user, const std::string& password);
+  grpc::Status GetSelfUser(const std::string& user_name,
+                           model::User* user);
+  grpc::Status UserSearch(const model::server::UserSearchRequest* request,
+                          model::server::UserSearchResponse* response);
+  grpc::Status CreateUser(const model::User& user,
+                          const std::string& password);
   grpc::Status RemoveUser(const std::string& user_name);
   grpc::Status UpdateUser(const std::string& user_name,
                           const model::User& user);

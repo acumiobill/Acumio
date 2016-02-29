@@ -28,6 +28,7 @@ using grpc::Status;
 //namespace po  = boost::program_options;
 
 namespace acumio {
+namespace model {
 namespace server {
 class ServerImpl final : public Server::Service {
  public:
@@ -54,7 +55,7 @@ class ServerImpl final : public Server::Service {
     // TODO: Authenticate user. Later, the GetSelfUserRequest will not
     // even need to contain the username in the request, because it should
     // be inferred by the Authentication proess.
-    return user_service_->GetSelfUser(request->username(),
+    return user_service_->GetSelfUser(request->user_name(),
                                       response->mutable_user());
   }
 
@@ -70,14 +71,14 @@ class ServerImpl final : public Server::Service {
     // TODO: Authenticate User. Standard permissions would have this apply
     // to Admin role.
     return user_service_->CreateUser(request->user(),
-                                     request->acumiopassword());
+                                     request->acumio_password());
   }
 
   Status RemoveUser(ServerContext* context, const RemoveUserRequest* request,
                     RemoveUserResponse* response) override {
     // TODO: Authenticate User. Standard permissions would have this apply
     // to Admin role.
-    return user_service_->RemoveUser(request->username());
+    return user_service_->RemoveUser(request->user_name());
   }
 
   Status UpdateUser(ServerContext* context, const UpdateUserRequest* request,
@@ -85,8 +86,38 @@ class ServerImpl final : public Server::Service {
     // TODO: Authenticate User. Standard permissions would have this apply
     // to Admin role *unless* the user being updated matched the user being
     // authenticated.
-    return user_service_->UpdateUser(request->usernametomodify(),
-                                     request->updateduser());
+    return user_service_->UpdateUser(request->user_name_to_modify(),
+                                     request->updated_user());
+  }
+
+  Status CreateRepository(ServerContext* context,
+                          const CreateRepositoryRequest* request,
+                          CreateRepositoryResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  Status GetRepository(ServerContext* context,
+                       const GetRepositoryRequest* request,
+                       GetRepositoryResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  Status ListRepositories(ServerContext* context,
+                        const ListRepositoriesRequest* request,
+                        ListRepositoriesResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  Status RemoveRepository(ServerContext* context,
+                          const RemoveRepositoryRequest* request,
+                          RemoveRepositoryResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  Status UpdateRepository(ServerContext* context,
+                          const UpdateRepositoryRequest* request,
+                          UpdateRepositoryResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
  private:
@@ -154,6 +185,7 @@ void RunServer(std::string keyFile, std::string certKeyFile) {
   server->Wait();
 }
 } // end namespace server
+} // end namespace model
 } // end namespace acumio
 
 int main(int argc, char** argv) {
@@ -181,6 +213,6 @@ int main(int argc, char** argv) {
 */
   std::string ssl_key_file = "/home/bill/acumio/ssl/private/acumioserver.key";
   std::string certificate = "/home/bill/acumio/ssl/certs/Flying-Ubuntu-Dragon.crt";
-  acumio::server::RunServer(ssl_key_file, certificate);
+  acumio::model::server::RunServer(ssl_key_file, certificate);
   return 0;
 }

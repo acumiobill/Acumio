@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package acumio.model;
+option java_package = "com.acumio.model";
+
+message QualifiedName {
+  // This is a full specification of the namespace to which a named
+  // entity may belong. Note that 'namespace' is a reserved word in
+  // proto3, so we call this 'name_space' instead.
+  // If name_space has 0 length, this will be the global namespace.
+  //
+  // For data assets belonging to a repository, the prefix portion
+  // of the namespace will identity the repository.
+  string name_space = 1;
+  // The name of the entity being referenced. The name is required
+  // to uniquely define an entity within the name_space.
+  string name = 2;
+}

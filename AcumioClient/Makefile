@@ -15,13 +15,14 @@ PLUGIN_ARG := --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN_PATH)
 PROTOS_PATH = ../apiprotos/protos
 GENCPP_PATH = ../apiprotos/gen-cpp
 PROTOLIB_DIR = ../apiprotos/lib
+PROTOLIB_LIST = $(shell find $(PROTOLIB_DIR) -type f -name "*.o")
 
 vpath %.proto $(PROTOS_PATH)
 
 all: AcumioCommandLine.exe
 	echo "Generated AcumioCommandLine.exe"
 
-CLIENT_DEPS = $(PROTOLIB_DIR)/user.pb.o $(PROTOLIB_DIR)/server.pb.o $(PROTOLIB_DIR)/server.grpc.pb.o obj/AcumioClient.o obj/AcumioCommandLine.o
+CLIENT_DEPS = obj/AcumioClient.o obj/AcumioCommandLine.o $(PROTOLIB_LIST)
 AcumioCommandLine.exe: $(CLIENT_DEPS)
 	$(CXX) $^ $(LDFLAGS) -o $@
 

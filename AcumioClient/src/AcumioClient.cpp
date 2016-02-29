@@ -19,9 +19,9 @@ using namespace std;
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
-using acumio::server::ConcatInputRequest;
-using acumio::server::ConcatInputResponse;
-using acumio::server::Server;
+using acumio::model::server::ConcatInputRequest;
+using acumio::model::server::ConcatInputResponse;
+using acumio::model::server::Server;
 
 namespace acumio {
 

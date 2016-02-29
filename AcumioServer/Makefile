@@ -20,13 +20,18 @@ PLUGIN_ARG := --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN_PATH)
 PROTOS_PATH = ../apiprotos/protos
 GENCPP_PATH = ../apiprotos/gen-cpp
 PROTOLIB_DIR = ../apiprotos/lib
+PROTOLIB_LIST = $(shell find $(PROTOLIB_DIR) -type f -name "*.o")
 
 vpath %.proto $(PROTOS_PATH)
 
 all: AcumioServer.exe
-	echo "Done"
+	@echo "Done"
 
-SERVER_DEPS = obj/AcumioServer.o obj/UserService.o obj/user_repository.o obj/comparable.o obj/encrypter.o $(PROTOLIB_DIR)/user.pb.o $(PROTOLIB_DIR)/server.pb.o $(PROTOLIB_DIR)/server.grpc.pb.o
+SERVER_DEPS = obj/AcumioServer.o obj/UserService.o obj/user_repository.o obj/comparable.o obj/encrypter.o $(PROTOLIB_LIST)
+
+debug_list:
+	@echo "PROTOLIB_LIST: $(PROTOLIB_LIST)"
+
 AcumioServer.exe: $(SERVER_DEPS)
 	$(CXX) $^ $(LDFLAGS) -o $@
 

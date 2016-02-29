@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "names.proto";
+import "configuration.proto";
+
+package acumio.model;
+option java_package = "com.acumio.model";
+
+message Repository {
+  enum Type {
+    UNKNOWN = 0;
+    ACUMIO = 1;
+    HDFS = 2;
+    HIVE = 3;
+    // We treat different SQL vendors separately because they require
+    // different drivers to connect to them. Also, their system catalogs
+    // are all different.
+    ORACLE = 4;
+  }
+  // Often, Repositories are in the top-level namespace for an organization,
+  // so the name_space attribute of name will be empty, and the name attribute
+  // will uniquely identify the repository within the organization.
+  // As a best-practice, it is better to have the root namespace of an
+  // organization be the name of the organization.
+  QualifiedName name = 1;
+  Type type = 2;
+  Configuration connect_config = 3;
+  string description = 4;
+}

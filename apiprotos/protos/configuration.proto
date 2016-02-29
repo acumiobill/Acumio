@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package acumio.model;
+option java_package = "com.acumio.model";
+
+
+// When specifying a configuration, care needs to be taken to handle
+// sensitive attributes such as passwords. Most configuration values
+// can be presented in the clear (such as the name of an Oracle server
+// in most installations), but others, such as user passwords,
+// must be stored in encrypted fashion. Still others must not only be
+// stored in an encrypted fashion, they must be decryptable as well.
+// This might be the case for passwords allowing connections to a
+// secured system. The Acumio server needs to be able to connect,
+// but a configuration file should only have the encrypted value of
+// the password stored, and then the Acumio server should hae a key
+// to decrypt it. In terms of specifying encryption or decryption
+// methods,  other ConfigItem parameters can specify that as needed.
+enum EncryptionType {
+  NO_ENCRYPT = 0;
+  ONE_WAY_ENCRYPT = 1;
+  TWO_WAY_ENCRYPT = 2;
+  UNKNOWN_ENCRYPT = 3;
+}
+
+message Configuration {
+  message Param {
+    string lvalue = 1;
+    string rvalue = 2;
+    EncryptionType encrypt_type = 3;
+  }
+
+  repeated Param param = 1;
+}
