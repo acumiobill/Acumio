@@ -207,6 +207,8 @@ message GetDatasetRequest {
   //       Do we want to always send it back with the GetDatasetRequest?
   //       Fine for UI client, but not helpful for engines that do not
   //       care about description.
+  //       Similarly, we should see if we want to return ACLs in the
+  //       request.
 
   // One physical name should identify a single dataset. A process trying
   // to understand a query written in SQL will want to retrieve multiple
@@ -228,7 +230,36 @@ message RemoveDatasetResponse {
   // Intentionally Empty.
 }
 
-// TODO: Add SearchDatasetRequest/Response
+message SearchDatasetsRequest {
+  // TODO: Add support for getting back only subset of Dataset's attributes.
+  //       For example, we might only want to get back the full names of
+  //       the Datasets without the attribute details, or only want a subset
+  //       of the attributes (a query engine performing a query would only
+  //       want those attributes on a dataset referenced in the query).
+  //       In addition, we need to handle Descriptions of Datasets and their
+  //       attributes, including mechanisms for maintaining Wiki-style
+  //       versioning. Finally, an Admin trying to grant privileges for
+  //       a dataset should be able to see the existing ACLs.
+
+  // When specifying the logical_name, you can use wild-cards in
+  // either the name_space or the name or both. At the moment,
+  // only prefix wildcards are supported.
+  QualifiedName logical_name = 1;
+
+  // Similar to logical_name, the physical_name can be specified
+  // with wild-cards.
+  QualifiedName physical_name = 2;
+
+  // Keyword search may match description attributes, column names,
+  // Namespace names, table names, etc.
+  repeated string key_words = 3;
+}
+
+message SearchDatasetsResponse {
+  repeated Dataset dataset = 1;
+  uint32 min_query_score = 2;
+  bool more_results = 3;
+}
 
 message UpdateDatasetRequest {
   // The key-based lookup of the Dataset we are modifying.
@@ -272,6 +303,7 @@ service Server {
   rpc CreateDataset(CreateDatasetRequest) returns (CreateDatasetResponse) {}
   rpc GetDataset(GetDatasetRequest) returns (GetDatasetResponse) {}
   rpc RemoveDataset(RemoveDatasetRequest) returns (RemoveDatasetResponse) {}
+  rpc SearchDatasets(SearchDatasetsRequest) returns (SearchDatasetsResponse) {}
   rpc UpdateDataset(UpdateDatasetRequest) returns (UpdateDatasetResponse) {}
 }
 

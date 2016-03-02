@@ -120,6 +120,35 @@ class ServerImpl final : public Server::Service {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
+  Status CreateDataset(ServerContext* context,
+                       const CreateDatasetRequest* request,
+                       CreateDatasetResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  Status GetDataset(ServerContext* context, const GetDatasetRequest* request,
+                    GetDatasetResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  Status RemoveDataset(ServerContext* context,
+                       const RemoveDatasetRequest* request,
+                       RemoveDatasetResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  Status SearchDatasets(ServerContext* context,
+                        const SearchDatasetsRequest* request,
+                        SearchDatasetsResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  Status UpdateDataset(ServerContext* context,
+                       const UpdateDatasetRequest* request,
+                       UpdateDatasetResponse* response) override {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
  private:
   std::unique_ptr<acumio::UserService> user_service_;
 };
