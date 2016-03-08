@@ -18,45 +18,31 @@ namespace acumio {
 class FullUser {
  public:
   FullUser() : user_(), password_(), salt_() {}
-  FullUser(const acumio::model::User& user,
+  FullUser(const model::User& user,
            const std::string& encrypted_password,
            const std::string& salt) : user_(user),
               password_(encrypted_password), salt_(salt) {}
   ~FullUser();
 
-  inline const acumio::model::User& user() const {return user_;}
+  inline const model::User& user() const {return user_;}
   inline const std::string password() const {return password_;}
   inline const std::string salt() const {return salt_;}
-  inline acumio::model::User* mutable_user() { return &user_; }
+  inline model::User* mutable_user() { return &user_; }
   inline std::string* mutable_password() { return &password_; }
   inline std::string* mutable_salt() { return &salt_; }
 
  private:
-  acumio::model::User user_;
+  model::User user_;
   std::string password_;
   std::string salt_;
 };
 
-typedef acumio::mem_repository::KeyExtractorInterface<FullUser> _UserExtractor;
-typedef acumio::mem_repository::MemRepository<FullUser> _UserRepository;
-
-class NameExtractor : public _UserExtractor {
- public:
-  NameExtractor() : _UserExtractor() {}
-  ~NameExtractor();
-  inline std::unique_ptr<Comparable> GetKey(const FullUser& element) const {
-    std::unique_ptr<Comparable> key(
-        new StringComparable(element.user().name()));
-    return key;
-  }
-};
 
 class UserRepository {
  public:
-  typedef mem_repository::MemRepository<FullUser>::PrimaryIterator
-      PrimaryIterator;
-  typedef mem_repository::MemRepository<FullUser>::SecondaryIterator
-      SecondaryIterator;
+  typedef mem_repository::MemRepository<FullUser> _UserRepository;
+  typedef _UserRepository::PrimaryIterator PrimaryIterator;
+  typedef _UserRepository::SecondaryIterator SecondaryIterator;
 
   UserRepository();
   ~UserRepository();

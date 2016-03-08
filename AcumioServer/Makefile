@@ -17,41 +17,37 @@ GRPC_CPP_PLUGIN = grpc_cpp_plugin
 GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
 PLUGIN_ARG := --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN_PATH)
 
-PROTOS_PATH = ../apiprotos/protos
-GENCPP_PATH = ../apiprotos/gen-cpp
-PROTOLIB_DIR = ../apiprotos/lib
-PROTOLIB_LIST = $(shell find $(PROTOLIB_DIR) -type f -name "*.o")
+PROTOS_PATH := ../apiprotos/protos
+GENCPP_PATH := ../apiprotos/gen-cpp
+PROTOLIB_DIR := ../apiprotos/lib
+PROTOLIB_LIST := $(shell find $(PROTOLIB_DIR) -type f -name "*.o")
+SRCFILES := $(shell find src -type f -name "*.cpp")
+HDRFILES := $(shell find src -type f -name "*.h")
+DOTOFILES := $(patsubst src/%.cpp, obj/%.o, $(SRCFILES))
+DEPFILES := $(patsubst obj/%.o, obj/%.d, $(DOTOFILES))
 
 vpath %.proto $(PROTOS_PATH)
 
 all: AcumioServer.exe
 	@echo "Done"
 
-SERVER_DEPS = obj/AcumioServer.o obj/UserService.o obj/user_repository.o obj/comparable.o obj/encrypter.o $(PROTOLIB_LIST)
+SERVER_DEPS = $(DOTOFILES) $(PROTOLIB_LIST)
 
 debug_list:
 	@echo "PROTOLIB_LIST: $(PROTOLIB_LIST)"
+	@echo "DEPFILES: $(DEPFILES)"
 
 AcumioServer.exe: $(SERVER_DEPS)
 	$(CXX) $^ $(LDFLAGS) -o $@
 
-obj/AcumioServer.o: src/AcumioServer.cpp
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) -c -o obj/AcumioServer.o src/AcumioServer.cpp
+obj/%.d: src/%.cc
+	@$(SHELL) -ec '$(CXX) -MM -MG $(CXXFLAGS) $< > $@'
 
-obj/UserService.o: src/UserService.cpp src/UserService.h src/user_repository.h src/mem_repository.h src/comparable.h src/pointer_less.h
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) -c -o obj/UserService.o src/UserService.cpp
-
-obj/user_repository.o: src/user_repository.cpp src/user_repository.h src/mem_repository.h src/comparable.h src/pointer_less.h
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) -c -o obj/user_repository.o src/user_repository.cpp
-
-obj/comparable.o: src/comparable.cpp src/comparable.h
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) -c -o obj/comparable.o src/comparable.cpp
-
-obj/encrypter.o: src/encrypter.cpp src/encrypter.h
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) -c -o obj/encrypter.o src/encrypter.cpp
+obj/%.o: src/%.cpp
+	$(CXX) -c -o $@ $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) $<
 
 clean:
-	rm -f AcumioServer.exe *.o src/*.o obj/*.o
+	rm -f AcumioServer.exe *.o src/*.o obj/*.o obj/*.d
 
-cleanall:
-	rm -f AcumioServer.exe *.o src/*.o obj/*.o
+
+-include $(DEPFILES)

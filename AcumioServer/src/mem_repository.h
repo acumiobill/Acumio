@@ -72,6 +72,8 @@ class MemRepository {
 
   typedef std::pair<const std::unique_ptr<Comparable>&, const EltType>
       IteratorElement;
+  typedef std::pair<grpc::Status, EltType*> StatusEltPtrPair;
+  typedef std::pair<grpc::Status, const EltType*> StatusEltConstPtrPair;
 
   template <typename IterType>
   class Iterator :
@@ -126,6 +128,9 @@ class MemRepository {
   typedef Iterator<RepositoryMap::const_iterator> PrimaryIterator;
   typedef Iterator<RepositoryMultiMap::const_iterator> SecondaryIterator; 
 
+  // The extractors vector is *not* made const, because we perform a move
+  // operation on the contents of the vector, thereby passing ownership
+  // to the repository.
   MemRepository(std::unique_ptr<Extractor> main_extractor,
                 std::vector<std::unique_ptr<Extractor>>* extractors) :
       main_extractor_(std::move(main_extractor)) {
@@ -251,6 +256,32 @@ class MemRepository {
     int32_t location = it->second;
     *elt = elements_[location];
     return grpc::Status::OK;
+  }
+
+  StatusEltPtrPair MutableGet(const std::unique_ptr<Comparable>& key) {
+    RepositoryMap::const_iterator it = main_index_.find(key);
+    if (it == main_index_.end()) {
+      std::string error = "Unable to find element with key: " +
+                          key->to_string();
+      return StatusEltPtrPair(grpc::Status(grpc::StatusCode::NOT_FOUND, error),
+                              nullptr);
+    }
+    int32_t location = it->second;
+    return StatusEltPtrPair(grpc::Status::OK, &(elements_[location]));
+  }
+
+  StatusEltConstPtrPair NonMutableGet(
+      const std::unique_ptr<Comparable>& key) const {
+    RepositoryMap::const_iterator it = main_index_.find(key);
+    if (it == main_index_.end()) {
+      std::string error = "Unable to find element with key: " +
+                          key->to_string();
+      return StatusEltConstPtrPair(
+          grpc::Status(grpc::StatusCode::NOT_FOUND, error),
+          nullptr);
+    }
+    int32_t location = it->second;
+    return StatusEltConstPtrPair(grpc::Status::OK, &(elements_[location]));
   }
 
   PrimaryIterator LowerBound(const std::unique_ptr<Comparable>& key) const {

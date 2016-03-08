@@ -12,7 +12,25 @@ message QualifiedName {
   // For data assets belonging to a repository, the prefix portion
   // of the namespace will identity the repository.
   string name_space = 1;
+
   // The name of the entity being referenced. The name is required
   // to uniquely define an entity within the name_space.
   string name = 2;
+}
+
+message Namespace {
+  // Namespaces of course, belong to namespaces, with the root namespace
+  // being un-named. We identify a namespace in two ways: by its
+  // position relative to the parent namespace, and by its fully written
+  // name. These two representations of course, are derivable from the
+  // other as long as you know the separator for the parent namespace.
+  string full_name = 1;
+  QualifiedName name = 2;
+
+  // When representing QualifiedName entities with this Namespace as
+  // the parent Namespace, the fully-qualified name of the child entity
+  // (be it a Dataset or an Attribute or a Namespace) will be formed
+  // by taking the concatenation of (full_name, separator, child.name)
+  // where child.name represents the short-name of the child entity.
+  string separator = 3;
 }

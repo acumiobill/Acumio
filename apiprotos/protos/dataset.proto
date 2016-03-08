@@ -1,7 +1,8 @@
 syntax = "proto3";
 
-import "names.proto";
 import "attributes.proto";
+import "description.proto";
+import "names.proto";
 import "google/protobuf/descriptor.proto";
 
 package acumio.model;
@@ -21,10 +22,15 @@ message UnknownBinary {
 message SemiStructuredDataset {
   // Note that it is common for there to be no "logical" name
   // for the SemiStructuredDataset, in which case the attributes
-  // of name are empty. Another possibility is that the name
+  // of this "name" are empty. Another possibility is that the name
   // simply mirrors the physical name, e.g., the file location.
   QualifiedName name = 1;
-  repeated StructuredType attribute = 2;
+
+  // The keys are how we want to reference a given structure. Using the fully
+  // qualifed name might be one way, but it assumes that we don't re-use
+  // the same basic StructuredType with different semantics. A better way
+  // is to assume we have a number of named methods for extracting content.
+  map<string, StructuredType> structure = 2;
 }
 
 message SortSpec {
@@ -204,6 +210,7 @@ message Dataset {
     // Similar to the situation where logical_type_case() returns
     // LOGICAL_TYPE_NOT_SET.
     UnknownDataset unknown = 1;
+
     // All messages in Dataset hae a flat structure with each
     // attribute being of a primitive attribute type.
     // Use-case: Accessing a relational database table,  or a
@@ -212,6 +219,7 @@ message Dataset {
     // part of a relational database - the tag strictly refers
     // to the structure of the data, not the storage format.
     RelationalType relational = 2;
+
     // All messages in Dataset have the same structure that could
     // be described by a single StructuredType.
     // Use-case: Standard key-value pair database where each value
@@ -220,6 +228,7 @@ message Dataset {
     // relational model.
     // Use-case: JSON message log with uniform message types.
     StructuredType structured = 3;
+
     // It is feasible to tease apart different messages within the
     // dataset, but each message will have fundamentally different
     // characteristics. In particular, there might be completely
@@ -229,6 +238,7 @@ message Dataset {
     // in JSON might imply either STRUCTURED or SEMI_STRUCTURED
     // formats.
     SemiStructuredDataset semi_structured = 4;
+
     // The content is strictly text (or nearly all text) and has no inherent
     // structure or mechanism to pull apart different messages. However, you
     // may separate parts of the messages by new-line character, or by spaces,
@@ -282,11 +292,49 @@ message Dataset {
   PartitionSpec partition = 18;
   SortSpec sort = 19;
   Discovery discovery = 20;
+}
 
-  // TODO: Think about how we want to model descriptions of datasets.
-  //       For storage purposes, we probably want to differentiate
-  //       the descriptions of Datasets from the datasets themselves.
-  //       Why? Because it will be common to want the dataset without
-  //       the description if we are going to ever serve the purposes
-  //       of a query engine or any automated process.
+// We will use DatasetDescriptions in our APIs in a way that allows
+// us to know which Datasets they apply to. The DatasetDescription
+// itself does not have that knowledge.
+// The reason not to put it directly on the Dataset itself is because
+// we will want to manage the descriptions differently. It will be
+// common to want just the Dataset without the Description, or sometimes,
+// the other way around.
+message DatasetDescription {
+  Description description = 1;
+  // Assuming a single RelationalType the keys are formed as the name
+  // of the attributes.
+  // If StructuredType, the keys are formed as the attribute path names.
+  // So for example, if the attribute type is a simple type, it's just
+  // the name of the attribute. However, for an attribute "foo" with
+  // type MyStruct (which is a structured type) containing attributes
+  // "bar" and "cat", the key "foo" refers to the overall structure,
+  // and the key "foo.bar" refers to the "bar" attribute of "foo", and
+  // the key "foo.cat" refers to the "cat" attribute of "foo". Similarly,
+  // if there is a MapType attribute "foo" with the type for the value
+  // of the MapType being MyStruct, then a similar naming convention
+  // applies.
+  // For a SemiStructured type, note that the SemiStructuredType has 
+  // the structure attribute, which is a map from key-names to StructuredTypes.
+  // So for example, if we have this map:
+  //      "ErrorText"  : ErrorMessageLog
+  //      "StackTrace" : StackTraceMesssage
+  // With ErrorMessageLog formed as:
+  //   { int32 error_code = 1; string error_message = 2}
+  // and StackTrace formed as:
+  //   { message Line { string source_file_name = 1; uint32 line_number = 2}
+  //     repeated Line line = 1;
+  //   }
+  // We can give a description for "ErrorText" using the key "ErrorText",
+  // and the key "ErrorText.error_code" to describe the error_code attribute
+  // of ErrorMessageLog, and "StackTrace" to describe "StackTrace" and
+  // "StackTrace.source_file_name" to describe the source_file_name attribute
+  // of a StackTraceMessage.
+  map<string, Description> attribute_description = 2;
+}
+
+message DatasetDescriptionHistory {
+  DescriptionHistory dataset_history = 1;
+  map<string, DescriptionHistory> attribute_history = 2;
 }
