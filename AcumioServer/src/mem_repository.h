@@ -6,12 +6,13 @@
 // Version     :
 // Copyright   : Copyright 2016
 // Description : Provides templated multi-threaded access to an in-memory
-//               repository.
+//               repository. (Not yet threadsafe).
 //============================================================================
 
-#include <stdint.h>
 #include <map>
+#include <sstream>
 #include <stack>
+#include <stdint.h>
 #include <vector>
 #include <grpc++/support/status.h>
 #include "comparable.h"
@@ -27,6 +28,29 @@ class KeyExtractorInterface {
   KeyExtractorInterface() {}
   virtual ~KeyExtractorInterface() {}
   virtual std::unique_ptr<Comparable> GetKey(const EltType& element) const = 0;
+};
+
+template <class EltType>
+class ElementMutatorInterface {
+ public:
+  ElementMutatorInterface() {}
+  virtual ~ElementMutatorInterface() {}
+  virtual grpc::Status Mutate(EltType* element) = 0;
+};
+
+template <class EltType>
+class ReplacementMutator : public ElementMutatorInterface<EltType> {
+ public:
+  ReplacementMutator(const EltType& replacement) :
+      ElementMutatorInterface<EltType>(), replacement_(replacement) {}
+  ~ReplacementMutator() {}
+  grpc::Status Mutate(EltType* element) {
+    *element = replacement_;
+    return grpc::Status::OK;
+  }
+
+ private:
+  EltType replacement_;
 };
 
 template <class EltType>
@@ -82,7 +106,8 @@ class MemRepository {
     Iterator<IterType>() {}
     Iterator<IterType>(IterType wrapped_iterator,
                        const std::vector<EltType>* elements) :
-        wrapped_iterator_(wrapped_iterator), elements_(elements) {}
+        wrapped_iterator_(wrapped_iterator), elements_(elements),
+        saved_elt_(nullptr) {}
     Iterator<IterType>(const Iterator<IterType>& copy) :
         wrapped_iterator_(copy.wrapped_iterator_), elements_(copy.elements_) {}
     ~Iterator<IterType>() {}
@@ -96,21 +121,21 @@ class MemRepository {
       return *this;
     }
     // post-increment/decrement.
-    inline Iterator<IterType>& operator++(int) {
+    inline Iterator<IterType> operator++(int) {
       Iterator<IterType> tmp(*this);
       wrapped_iterator_++;
       return tmp;
     }
-    inline Iterator<IterType>& operator--(int) {
+    inline Iterator<IterType> operator--(int) {
       Iterator<IterType> tmp(*this);
       wrapped_iterator_--;
       return tmp;
     }
-    inline bool operator==(const Iterator<IterType>& other) {
+    inline bool operator==(const Iterator<IterType>& other) const {
       return wrapped_iterator_ == other.wrapped_iterator_ &&
              elements_ == other.elements_;
     }
-    inline bool operator!=(const Iterator<IterType>& other) {
+    inline bool operator!=(const Iterator<IterType>& other) const {
       return wrapped_iterator_ != other.wrapped_iterator_ ||
              elements_ != other.elements_;
     }
@@ -119,10 +144,17 @@ class MemRepository {
                               elements_->at(wrapped_iterator_->second));
       return ret_val;
     }
+    IteratorElement* operator->() {
+      saved_elt_.reset(
+          new IteratorElement(wrapped_iterator_->first,
+                              elements_->at(wrapped_iterator_->second)));
+      return saved_elt_.get();
+    }
 
    private:
     IterType wrapped_iterator_;
-    const std::vector<EltType>* elements_; 
+    const std::vector<EltType>* elements_;
+    std::unique_ptr<IteratorElement> saved_elt_;
   };
 
   typedef Iterator<RepositoryMap::const_iterator> PrimaryIterator;
@@ -134,7 +166,7 @@ class MemRepository {
   MemRepository(std::unique_ptr<Extractor> main_extractor,
                 std::vector<std::unique_ptr<Extractor>>* extractors) :
       main_extractor_(std::move(main_extractor)) {
-    for (uint32_t i = 0; i < extractors->size(); i++) {
+    for (uint16_t i = 0; i < extractors->size(); i++) {
       extractors_.push_back(std::move(extractors->at(i)));
     }
     indices_.resize(extractors_.size());
@@ -145,8 +177,10 @@ class MemRepository {
 
   inline uint16_t added_index_count() const {return indices_.size();}
 
-  inline const Extractor& main_extractor() const { return main_extractor_; }
-  inline const Extractor& ith_extractor(int i) const { return extractors_[i]; }
+  inline const Extractor& main_extractor() const { return *main_extractor_; }
+  inline const Extractor& ith_extractor(int i) const {
+    return *(extractors_[i]);
+  }
 
   grpc::Status Add(const EltType& e) {
     // TODO: Properly guard element to handle multi-threaded access.
@@ -159,14 +193,16 @@ class MemRepository {
     RepositoryMap::iterator it = main_index_.lower_bound(main_key);
     if (*(it->first) == *main_key) {
       // TODO: Log Error.
-      std::string error = "Cannot add duplicate element with key: " +
-                           main_key->to_string();
-      return grpc::Status(grpc::StatusCode::ALREADY_EXISTS, error);
+      std::stringstream error;
+      error << "Cannot add duplicate element with key: (\""
+            << main_key->to_string()
+            << "\")";
+      return grpc::Status(grpc::StatusCode::ALREADY_EXISTS, error.str());
     }
 
     // Next, extract all the key values to be updated.
     std::vector<std::unique_ptr<Comparable>> added_keys;
-    for (uint32_t i = 0; i < extractors_.size(); i++) {
+    for (uint16_t i = 0; i < extractors_.size(); i++) {
       added_keys.push_back(extractors_[i]->GetKey(e));
     }
    
@@ -184,7 +220,7 @@ class MemRepository {
       elements_[new_elt_pos] = e;
     }
     main_index_.emplace_hint(it, std::move(main_key), new_elt_pos);
-    for (uint32_t i = 0; i < added_keys.size(); i++) {
+    for (uint16_t i = 0; i < added_keys.size(); i++) {
       indices_[i].emplace(std::move(added_keys[i]), new_elt_pos);
     }
 
@@ -194,9 +230,11 @@ class MemRepository {
   grpc::Status Remove(const std::unique_ptr<Comparable>& key) {
     if (main_index_.count(key) == 0) {
       // TODO: Log Warning.
-      std::string error = "Unable to find element with key: " +
-                           key->to_string();
-      return grpc::Status(grpc::StatusCode::NOT_FOUND, error);
+      std::stringstream error;
+      error << "Unable to find element with key: (\""
+            << key->to_string()
+            << "\")";
+      return grpc::Status(grpc::StatusCode::NOT_FOUND, error.str());
     }
   
     RepositoryMap::iterator it = main_index_.find(key);
@@ -217,67 +255,108 @@ class MemRepository {
 
   grpc::Status Update(const std::unique_ptr<Comparable>& key,
                       const EltType& new_value) {
-    // First, get a handle to entry by main key. If unable to find it,
-    // we obviously cannot perform an update.
-    RepositoryMap::iterator it = main_index_.find(key);
-    if (it == main_index_.end()) {
-      std::string error = "Unable to update element with key: " +
-                          key->to_string() +
-                          ". Element not found.";
-      return grpc::Status(grpc::StatusCode::NOT_FOUND, error);
-    }
-
-    int32_t elt_pos = it->second;
-    EltType prior_value = elements_[elt_pos];
-    elements_[elt_pos] = new_value;
-    std::unique_ptr<Comparable> new_key(main_extractor_->GetKey(new_value));
-    if (*new_key != *key) {
-       main_index_.erase(it);
-       main_index_.emplace_hint(it, std::move(new_key), elt_pos);
-    }
-
-    for (uint32_t i = 0; i < indices_.size(); i++) {
-      grpc::Status result =
-          UpdateSecondaryIndex(new_value, prior_value, elt_pos, i);
-      if (! result.ok()) {
-        return result;
-      }
-    }
-    return grpc::Status::OK;
+    ReplacementMutator<EltType> mutator(new_value);
+    std::unique_ptr<Comparable> update_key = main_extractor_->GetKey(new_value);
+    return ApplyMutation(key, update_key, &mutator);
   }
 
   grpc::Status Get(const std::unique_ptr<Comparable>& key, EltType* elt) const {
     RepositoryMap::const_iterator it = main_index_.find(key);
     if (it == main_index_.end()) {
-      std::string error = "Unable to find element with key: " +
-                          key->to_string();
-      return grpc::Status(grpc::StatusCode::NOT_FOUND, error);
+      std::stringstream error;
+      error << "Unable to find element with key: (\""
+            << key->to_string()
+            << "\")";
+      return grpc::Status(grpc::StatusCode::NOT_FOUND, error.str());
     }
     int32_t location = it->second;
     *elt = elements_[location];
     return grpc::Status::OK;
   }
 
-  StatusEltPtrPair MutableGet(const std::unique_ptr<Comparable>& key) {
-    RepositoryMap::const_iterator it = main_index_.find(key);
+  // Warning: make sure that the updated_key would match the result of
+  // performing the mutation on the element. If this is incorrect, we
+  // could get a data corruption, as the mutation will occur - without
+  // a means of reverting back - but will not be completed.
+  grpc::Status ApplyMutation(const std::unique_ptr<Comparable>& key,
+                             const std::unique_ptr<Comparable>& updated_key,
+                             ElementMutatorInterface<EltType>* mutator) {
+    RepositoryMap::iterator it = main_index_.find(key);
     if (it == main_index_.end()) {
-      std::string error = "Unable to find element with key: " +
-                          key->to_string();
-      return StatusEltPtrPair(grpc::Status(grpc::StatusCode::NOT_FOUND, error),
-                              nullptr);
+      std::stringstream error;
+      error << "Unable to find element with key: (\""
+            << key->to_string()
+            << "\")";
+      return grpc::Status(grpc::StatusCode::NOT_FOUND, error.str());
     }
     int32_t location = it->second;
-    return StatusEltPtrPair(grpc::Status::OK, &(elements_[location]));
+    EltType* element = &(elements_[location]);
+
+    RepositoryMap::iterator new_location = main_index_.lower_bound(updated_key);
+    if (new_location->first == updated_key) {
+      std::stringstream error;
+      error << "There is already an element with the key "
+            << updated_key->to_string() << ".";
+      return grpc::Status(grpc::StatusCode::ALREADY_EXISTS, error.str());
+    }
+
+    // Before applying the mutation, we want to capture the secondary
+    // key information. That way, after making the change, we can
+    // detect the difference.
+    std::vector<std::unique_ptr<Comparable>> prior_keys;
+    for (uint16_t i = 0; i < extractors_.size(); i++) {
+      prior_keys.push_back((extractors_[i])->GetKey(*element));
+    }
+    grpc::Status mutate_result = mutator->Mutate(element);
+    if (!mutate_result.ok()) {
+      return mutate_result;
+    }
+
+    std::unique_ptr<Comparable> new_key = main_extractor_->GetKey(*element);
+    if (*new_key != *updated_key) {
+      // This should *never* happen if we do things properly. Any time we
+      // perform a Mutate operation, we should verify beforehand that the
+      // mutation will not cause duplicate key violations.
+      std::stringstream error;
+      error << "Internal error: Applied mutation with wrong update key. "
+            << "The expected update key was: (\""
+            << updated_key->to_string()
+            << "\"), but what was found was: (\""
+            << new_key->to_string()
+            << "\"). This mismatch will cause data corruption.";
+      return grpc::Status(grpc::StatusCode::INTERNAL, error.str());
+    }
+    
+    if (*updated_key != *key) {
+       main_index_.erase(it);
+       main_index_.emplace_hint(new_location, std::move(new_key), location);
+    }
+
+    for (uint16_t i = 0; i < indices_.size(); i++) {
+      const std::unique_ptr<Extractor>& extractor = extractors_[i];
+      std::unique_ptr<Comparable> new_secondary = extractor->GetKey(*element);
+      grpc::Status result = UpdateSecondaryIndex(std::move(new_secondary),
+                                                 std::move(prior_keys[i]),
+                                                 location,
+                                                 i);
+      if (! result.ok()) {
+        return result;
+      }
+    }
+
+    return grpc::Status::OK;
   }
 
   StatusEltConstPtrPair NonMutableGet(
       const std::unique_ptr<Comparable>& key) const {
     RepositoryMap::const_iterator it = main_index_.find(key);
     if (it == main_index_.end()) {
-      std::string error = "Unable to find element with key: " +
-                          key->to_string();
+      std::stringstream error;
+      error << "Unable to find element with key: (\""
+            << key->to_string()
+            << "\")";
       return StatusEltConstPtrPair(
-          grpc::Status(grpc::StatusCode::NOT_FOUND, error),
+          grpc::Status(grpc::StatusCode::NOT_FOUND, error.str()),
           nullptr);
     }
     int32_t location = it->second;
@@ -294,16 +373,26 @@ class MemRepository {
     return SecondaryIterator(indices_[index_number].lower_bound(key),
                              &elements_);
   }
+
+  PrimaryIterator primary_begin() const {
+    return PrimaryIterator(main_index_.begin(), &elements_);
+  }
+
+  const PrimaryIterator primary_end() const {
+    return PrimaryIterator(main_index_.end(), &elements_);
+  }
+
+  const SecondaryIterator secondary_end(int index_number) const {
+    return SecondaryIterator(indices_[index_number].end(), &elements_);
+  }
  
  private:
-  grpc::Status UpdateSecondaryIndex(const EltType& new_value,
-                                    const EltType& prior_value,
-                                    int32_t elt_pos,
-                                    int32_t index_number) {
-    const std::unique_ptr<Extractor>& extractor = extractors_[index_number];
-    std::unique_ptr<Comparable> prior_key = extractor->GetKey(prior_value);
-    std::unique_ptr<Comparable> new_key = extractor->GetKey(new_value);
-    if (*prior_key == *new_key) {
+  grpc::Status UpdateSecondaryIndex(
+      std::unique_ptr<Comparable> new_key,
+      const std::unique_ptr<Comparable>& prior_key,
+      int32_t elt_pos,
+      int32_t index_number) {
+    if (prior_key == new_key) {
       return grpc::Status::OK;
     }
     RepositoryMultiMap& index = indices_[index_number];
@@ -326,11 +415,15 @@ class MemRepository {
       // TODO: Log Error. Error probably caused by multi-threaded access
       // corruption. Since we are not really thread-safe here, we should
       // expect this.
-      std::string error = "Index corruption detected when looking at index " +
-          std::to_string(index_number) + " while removing key " +
-          key->to_string() + " and expecting element position " +
-          std::to_string(elt_pos) + ".";
-      return grpc::Status(grpc::StatusCode::DATA_LOSS, error);
+      std::stringstream error;
+      error << "Index corruption detected when looking at index (\""
+            << std::to_string(index_number)
+            << "\") while removing key (\""
+            << key->to_string()
+            << "\") and expecting element position (\""
+            << std::to_string(elt_pos)
+            << "\").";
+      return grpc::Status(grpc::StatusCode::DATA_LOSS, error.str());
     }
     index.erase(lower);
     return grpc::Status::OK;

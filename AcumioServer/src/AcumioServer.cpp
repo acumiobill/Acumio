@@ -3,10 +3,26 @@
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
 // Copyright   : Copyright 2016
-// Description : Server skeleton. At the moment, this contains just
-//               an implementation of a "string concatenation" service
-//               and hooks for connecting to a User Service, which responds
-//               to the user-based APIs.
+// Description : Server implementation with grpc.
+//               This class has the "main" function as well as being
+//               responsible for building the server. The server
+//               is constructed of various services that share some repository
+//               data. The work for the various services gets delegated
+//               to individual components.
+//               The division is as follows (currently):
+//                    Namespace APIs -- delegated to NamespaceService
+//                    User APIs -- delegated to UserService
+//                    Dataset APIs -- delegated to DatasetService
+//                    Repository APIs -- delegated to RepositoryService.
+//
+//               Later, we should expect integration with Authentication
+//               services as well as some degree of Authorization components.
+//               In addition, we will need integration with Audit Logging
+//               and APIs for Audit Logging as well as for Lineage APIs.
+//
+//               Finally, there is a single "Concatenation" service which
+//               is really just a kind of "hello world" type of service.
+//               This is implemented directly in this class.
 //============================================================================
 
 #include <iostream>
@@ -20,6 +36,7 @@ using namespace std;
 
 #include "DatasetService.h"
 #include "NamespaceService.h"
+#include "RepositoryService.h"
 #include "UserService.h"
 #include "encrypter.h"
 #include "namespace_repository.h"
@@ -37,9 +54,11 @@ class ServerImpl final : public Server::Service {
  public:
   ServerImpl(std::unique_ptr<acumio::DatasetService> dataset_service,
              std::unique_ptr<acumio::NamespaceService> namespace_service,
+             std::unique_ptr<acumio::RepositoryService> repository_service,
              std::unique_ptr<acumio::UserService> user_service) :
      dataset_service_(std::move(dataset_service)),
      namespace_service_(std::move(namespace_service)),
+     repository_service_(std::move(repository_service)),
      user_service_(std::move(user_service)) {}
 
   Status ConcatInputs(ServerContext* context, const ConcatInputRequest* request,
@@ -60,37 +79,45 @@ class ServerImpl final : public Server::Service {
   Status CreateDataset(ServerContext* context,
                        const CreateDatasetRequest* request,
                        CreateDatasetResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return dataset_service_->CreateDataset(request->dataset(),
+                                           request->description());
   }
 
   Status GetDataset(ServerContext* context, const GetDatasetRequest* request,
                     GetDatasetResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return dataset_service_->GetDataset(request, response);
   }
 
   Status RemoveDataset(ServerContext* context,
                        const RemoveDatasetRequest* request,
                        RemoveDatasetResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return dataset_service_->RemoveDataset(request->name());
   }
 
   Status SearchDatasets(ServerContext* context,
                         const SearchDatasetsRequest* request,
                         SearchDatasetsResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return dataset_service_->SearchDatasets(request, response);
   }
 
   Status UpdateDataset(ServerContext* context,
                        const UpdateDatasetRequest* request,
                        UpdateDatasetResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return dataset_service_->UpdateDataset(request->name(), request->dataset());
+  }
+
+  Status UpdateDatasetWithDescription(
+      ServerContext* context,
+      const UpdateDatasetWithDescriptionRequest* request,
+      UpdateDatasetWithDescriptionResponse* response) override {
+    return dataset_service_->UpdateDatasetWithDescription(request);
   }
 
   Status UpsertDatasetDescription(
       ServerContext* context,
       const UpsertDatasetDescriptionRequest* request,
       UpsertDatasetDescriptionResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return dataset_service_->UpsertDatasetDescription(request);
   }
 
   // Namespace Services
@@ -142,40 +169,58 @@ class ServerImpl final : public Server::Service {
   Status CreateRepository(ServerContext* context,
                           const CreateRepositoryRequest* request,
                           CreateRepositoryResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return repository_service_->CreateRepository(request->repository(),
+        request->description());
   }
 
   Status GetRepository(ServerContext* context,
                        const GetRepositoryRequest* request,
                        GetRepositoryResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return repository_service_->GetRepository(request->repository_name(),
+        request->type(), request->include_description(),
+        request->include_description_history(), response);
   }
 
   Status ListRepositories(ServerContext* context,
                         const ListRepositoriesRequest* request,
                         ListRepositoriesResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return repository_service_->ListRepositories(request->list_max(),
+        request->start_after_name(), request->start_after_type(),
+        request->include_descriptions(), response);
   }
 
   Status RemoveRepository(ServerContext* context,
                           const RemoveRepositoryRequest* request,
                           RemoveRepositoryResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return repository_service_->RemoveRepository(request->repository_name(),
+                                                 request->type(),
+                                                 request->force());
   }
 
   Status UpdateRepository(ServerContext* context,
                           const UpdateRepositoryRequest* request,
                           UpdateRepositoryResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return repository_service_->UpdateRepository(request->repository_name(),
+        request->type(), request->repository());
+  }
+
+  Status UpdateRepositoryWithDescription(
+      ServerContext* context,
+      const UpdateRepositoryWithDescriptionRequest* request,
+      UpdateRepositoryWithDescriptionResponse* repsonse) override {
+    return repository_service_->UpdateRepositoryWithDescription(
+        request->repository_name(), request->type(), request->update(),
+        request->updated_description(), request->clear_description());
   }
 
   Status UpsertRepositoryDescription(
       ServerContext* context,
       const UpsertRepositoryDescriptionRequest* request,
       UpsertRepositoryDescriptionResponse* response) override {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+    return repository_service_->UpsertRepositoryDescription(
+        request->described(), request->type(), request->update(),
+        request->clear_description());
   }
-
 
   // User Services.
   Status CreateUser(ServerContext* context, const CreateUserRequest* request,
@@ -221,6 +266,7 @@ class ServerImpl final : public Server::Service {
  private:
   std::unique_ptr<acumio::DatasetService> dataset_service_;
   std::unique_ptr<acumio::NamespaceService> namespace_service_;
+  std::unique_ptr<acumio::RepositoryService> repository_service_;
   std::unique_ptr<acumio::UserService> user_service_;
 };
 /*
@@ -255,11 +301,15 @@ void RunServer(std::string keyFile, std::string certKeyFile) {
       new UserService(std::move(encrypter), std::move(salter)));
   std::shared_ptr<acumio::NamespaceRepository> namespace_repository(
       new NamespaceRepository());
+  std::shared_ptr<acumio::RepositoryRepository> repository_repository(
+      new acumio::RepositoryRepository());
   std::unique_ptr<acumio::NamespaceService> namespace_service(
-      new NamespaceService(namespace_repository));
+      new NamespaceService(namespace_repository, repository_repository));
+  std::unique_ptr<acumio::RepositoryService> repository_service(
+      new RepositoryService(repository_repository, namespace_repository));
   std::unique_ptr<acumio::DatasetService> dataset_service(new DatasetService());
   ServerImpl service(std::move(dataset_service), std::move(namespace_service),
-                     std::move(user_service));
+                     std::move(repository_service), std::move(user_service));
   std::string server_address("Flying-Ubuntu-Dragon:1782");
   grpc::ServerBuilder builder;
   /**

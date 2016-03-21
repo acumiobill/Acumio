@@ -19,6 +19,9 @@ There are a few prerequisites for this process to work:
 		  require JDK 1.8.
 		* Later, we will also need to be able to generate node.js
 		  libraries.
+	* Boost libraries
+		* Currently, only "boost_program_options" is required, but
+		  it costs relatively little to just install all of them.
 	* An SSL Certificate. (NOT YET ENABLED).
 		* For testing purposes, this can be self-signed, but we will
 		  later need to get "real" ones signed from a CA signing
@@ -71,3 +74,83 @@ executable:
 
 If all goes well, you should be able to first start the AcumioServer.exe
 by invoking it directly, then invoke the AcumioCommandLine.exe.
+
+TODO (In rough priority order):
+	* Introduce command-line args.
+		Currently, parallel development is thwarted by a lack
+		of command-line arguments. The point of this will be
+		to -- for example -- specify machine and port address.
+		At the moment, this is hard-coded to my machine.
+	* Complete Basic API definitions and implementations.
+		This is nearly done for the Basic APIs, but the search
+		style APIs will require extra thought. The Basic APIs
+		will allow for safe crud-operations and retrieval,
+		but not search. Currently, this is complete for
+		User and Namespace and most complete for Repository, but not
+		for Dataset. For Repository, the validation checks (i.e.,
+		foreign-key type checks) still need to be completed.
+	* Fix Acumio and Open-Source Copyright information.
+		Need to check legal requirements for including open-source
+		usage information. We are currently using:
+		* Google's protobuf
+		* Google's grpc
+		* Boost libraries
+	* Unit Tests!!
+		This is sorely lacking. The project has been pretty small
+		so far, but it will eventually get buried under its own
+		weight without tests. (Probably use boost test libraries
+		for this).
+	* Make Thread Safe
+		The underlying MemRepository class
+		(AcumioServer/src/mem_repository.h)
+		is most definitely *not* thread-safe so multi-system
+		access is going to cause corruption. This part will
+		be simple if we don't mind a performance hit. We will
+		probably do the simple thing first, then switch to
+		a more complex, but faster and more robust system later.
+		Hence, after testing, we will want to measure performance
+		and look for improvements. The performance improvements
+		are lower priority -- probably around the priority of
+		adding Lineage and Event APIs.
+	* Complete Search APIs.
+		This will require some work beyond the "basic" APIs,
+		and requires some research on how best to do this.
+		Basic reverse indexes are the first idea, but we will
+		likely want to use an external library to do this
+		(solr is the only one I have heard of). Note that
+		thread-safety will be required before we can complete
+		search APIs because indexing should be performed
+		asynchronously.
+	* Integrate with Web Front End
+		Targeting the use of Angular2 with Node.js/javascript.
+	* Integrate with Apache Atlas.
+		Need details on what the certification requirements are
+		for this.
+	* Add Retrievable and queryable Audit logging.
+		Minimally, we should store every action that changes
+		state, as well as login processing.
+	* Add Lineage and Event APIs.
+		Yes. Of course, we need these. Initially, we will just
+		keep this content in-memory, however, this content has
+		different requirements than the other content: we
+		will eventually *not* want to keep this in-memory except
+		for a memory-limited LRU Cache.
+	* Fix Directory Structure.
+		The current directory structure is fine for such a small
+		project, but we should have a good "think" about what
+		this should look like in the long term. Each directory
+		should have a clearly defined area of responsibility and
+		associated namespaces.
+	* Add Persistence
+		We need to first be able to recover state, but also,
+		be able to have alternative storage - particularly for
+		lineage information.
+	* Add SSL Support.
+		Required for an actual deployment.
+	* Add Authentication Support.
+		We will want to be integrated with external authenticators
+		as well as internal authenticators. Note that we want
+		SSL before Authentication.
+
+	
+

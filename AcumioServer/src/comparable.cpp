@@ -11,6 +11,7 @@
 namespace acumio {
 Comparable::~Comparable() {}
 StringComparable::~StringComparable() {}
+StringPairComparable::~StringPairComparable() {}
 Int32Comparable::~Int32Comparable() {}
 Int64Comparable::~Int64Comparable() {}
 } // namespace acumio

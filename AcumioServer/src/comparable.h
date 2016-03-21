@@ -61,6 +61,30 @@ class StringComparable : public Comparable {
   std::string value_;
 };
 
+class StringPairComparable : public Comparable {
+ public:
+  StringPairComparable(const std::string& prefix, const std::string& suffix) :
+      Comparable(), prefix_(prefix), suffix_(suffix) {}
+  ~StringPairComparable();
+  inline const std::string& prefix() const { return prefix_; }
+  inline const std::string& suffix() const { return suffix_; }
+  inline int compare_to(const Comparable& c) const {
+    const StringPairComparable& other =
+        dynamic_cast<const StringPairComparable&>(c);
+    int result = prefix_.compare(other.prefix());
+    if (result == 0) {
+      result = suffix_.compare(other.suffix());
+    }
+    return result;
+  }
+  inline std::string to_string() const {
+    return prefix_ + " " + suffix_;
+  }
+ private:
+  std::string prefix_;
+  std::string suffix_;
+};
+
 class Int32Comparable : public Comparable {
  public:
   Int32Comparable(int32_t value) : Comparable(), value_(value) {}

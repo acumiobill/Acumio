@@ -6,12 +6,11 @@ CXXFLAGS += -std=c++11 -Wall
 CXXFLAGS += -std=c++11 -Wall -g
 #CXXFLAGS += -std=c++11 -g
 # We cannot use the boost libraries until we rebuild the grpc libraries. Why? Because of the change
-# in handling of the ABI libraries. Basically, grpc++ and amily were built with pre-gcc.5.1 and boost
+# in handling of the ABI libraries. Basically, grpc++ and family were built with pre-gcc.5.1 and boost
 # was built with post-gcc.5.1. Currently, I have gcc version 5.2.1.
 # LDFLAGS += -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -lboost_program_options -lgrpc++ -lgrpc -lgpr -lprotobuf -lpthread -ldl
 # TODO: Replace -lgrpc++_unsecure with -lgrpc++ when ready to move to ssl
-# communication.
-LDFLAGS += -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -lgrpc++_unsecure -lgrpc -lgpr -lprotobuf -lpthread -ldl
+LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc -lgpr -lprotobuf -lpthread -ldl -lboost_program_options
 PROTOC = protoc
 GRPC_CPP_PLUGIN = grpc_cpp_plugin
 GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`

@@ -24,6 +24,11 @@ message Namespace {
   // position relative to the parent namespace, and by its fully written
   // name. These two representations of course, are derivable from the
   // other as long as you know the separator for the parent namespace.
+  // 
+  // To be clear, given two Namespace instances "p" and "c":
+  // 
+  // c.name.name_space() == p.full_name() ==>
+  // c.full_name() == p.full_name() + p.separator() + c.name().name()
   string full_name = 1;
   QualifiedName name = 2;
 
@@ -32,5 +37,6 @@ message Namespace {
   // (be it a Dataset or an Attribute or a Namespace) will be formed
   // by taking the concatenation of (full_name, separator, child.name)
   // where child.name represents the short-name of the child entity.
+  // For all but the root Namespace, the seperator must be non-empty.
   string separator = 3;
 }

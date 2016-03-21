@@ -6,7 +6,8 @@ CXXFLAGS += -std=c++11 -Wall
 CXXFLAGS += -std=c++11 -Wall -g
 #DEFINES += -D_GLIBCXX_USE_CXX11_ABI=0
 # TODO: User lgrpc++ instead of lgrpc++_unsecure
-LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc -lgpr -lprotobuf -lpthread -ldl
+#LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc -lgpr -lprotobuf -lpthread -ldl
+LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc -lprotobuf -lpthread -ldl
 PROTOC = protoc
 GRPC_CPP_PLUGIN = grpc_cpp_plugin
 GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`

@@ -21,7 +21,8 @@ class DatasetService {
   DatasetService();
   ~DatasetService();
 
-  grpc::Status CreateDataset(const model::Dataset& dataset) {
+  grpc::Status CreateDataset(const model::Dataset& dataset,
+                             const model::DatasetDescription& description) {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
@@ -30,8 +31,7 @@ class DatasetService {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
-  grpc::Status RemoveDataset(const std::string& name_space,
-                             const std::string& name) {
+  grpc::Status RemoveDataset(const model::QualifiedName& name) {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
@@ -41,9 +41,18 @@ class DatasetService {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
-  grpc::Status UpdateDataset(const std::string& name_space,
-                             const std::string& name,
+  grpc::Status UpdateDataset(const model::QualifiedName& name,
                              const model::Dataset& dataset) {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  grpc::Status UpdateDatasetWithDescription(
+      const model::server::UpdateDatasetWithDescriptionRequest* request) {
+    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
+  }
+
+  grpc::Status UpsertDatasetDescription(
+      const model::server::UpsertDatasetDescriptionRequest* request)  {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 

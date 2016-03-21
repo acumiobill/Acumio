@@ -12,7 +12,7 @@
 namespace acumio {
 
 namespace {
-typedef mem_repository::KeyExtractorInterface<model::DescribedNamespace>
+typedef mem_repository::KeyExtractorInterface<model::Namespace>
     _NamespaceExtractor;
 
 class NamespaceKeyExtractor : public _NamespaceExtractor {
@@ -20,9 +20,9 @@ class NamespaceKeyExtractor : public _NamespaceExtractor {
   NamespaceKeyExtractor() : _NamespaceExtractor() {}
   ~NamespaceKeyExtractor() {}
   inline std::unique_ptr<Comparable> GetKey(
-      const model::DescribedNamespace& elt) const {
+      const model::Namespace& name_space) const {
     std::unique_ptr<Comparable> key(
-        new StringComparable(elt.name_space.full_name()));
+        new StringComparable(name_space.full_name()));
     return key;
   }
 };
@@ -32,9 +32,9 @@ class NamespaceShortKeyExtractor : public _NamespaceExtractor {
   NamespaceShortKeyExtractor() : _NamespaceExtractor() {}
   ~NamespaceShortKeyExtractor() {}
   inline std::unique_ptr<Comparable> GetKey(
-    const model::DescribedNamespace& elt) const {
+    const model::Namespace& name_space) const {
     std::unique_ptr<Comparable> key(
-        new StringComparable(elt.name_space.name().name()));
+        new StringComparable(name_space.name().name()));
     return key;
   }
 };
@@ -54,28 +54,4 @@ NamespaceRepository::NamespaceRepository() : repository_(nullptr) {
 }
 
 NamespaceRepository::~NamespaceRepository() {}
-
-grpc::Status NamespaceRepository::Get(const std::string& full_name,
-                                      model::Namespace* elt) const {
-  std::unique_ptr<Comparable> key(new StringComparable(full_name));
-  _Repository::StatusEltConstPtrPair getResult =
-      repository_->NonMutableGet(key);
-  if (!getResult.first.ok()) {
-    return getResult.first;
-  }
-  elt->CopyFrom((getResult.second)->name_space);
-  return grpc::Status::OK;
-}
-
-grpc::Status NamespaceRepository::Update(const std::string& full_name,
-                                         const model::Namespace& name_space) {
-  std::unique_ptr<Comparable> key(new StringComparable(full_name));
-  _Repository::StatusEltPtrPair getResult = repository_->MutableGet(key);
-  if (!getResult.first.ok()) {
-    return getResult.first;
-  }
-  (getResult.second)->name_space.CopyFrom(name_space);
-  return grpc::Status::OK;
-}
-
 } // namespace acumio

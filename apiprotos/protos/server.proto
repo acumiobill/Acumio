@@ -52,7 +52,7 @@ message GetDatasetResponse {
 
 message RemoveDatasetRequest {
   // Locate dataset by fully-qualified name.
-  string full_name = 1;
+  acumio.model.QualifiedName name = 1;
 }
 
 message RemoveDatasetResponse {
@@ -99,11 +99,8 @@ message SearchDatasetsResponse {
 }
 
 message UpdateDatasetRequest {
-  // The key-based lookup of the Dataset we are modifying. The
-  // physical_name is the fully-qualified name including namespace
-  // prefix and separator. It comes from:
-  //  QualifiedName.name_space + separator + QualifiedName.name.
-  string physical_name = 1;
+  // The key-based lookup of the Dataset we are modifying.
+  acumio.model.QualifiedName name = 1;
   // What we want to change it to.
   acumio.model.Dataset dataset = 2;
 }
@@ -112,9 +109,22 @@ message UpdateDatasetResponse {
   // Intentionally Empty.
 }
 
+message UpdateDatasetWithDescriptionRequest {
+  // Fully qualified name of the Dataset.
+  acumio.model.QualifiedName name = 1;
+  acumio.model.Dataset update = 2;
+  acumio.model.DatasetDescription updated_description = 3;
+  bool clear_description = 4;
+  repeated string clear_attribute_description = 5;
+}
+
+message UpdateDatasetWithDescriptionResponse {
+  // Intentionally Empty.
+}
+
 message UpsertDatasetDescriptionRequest {
-  // The "described" string is the fully-qualified name of the Dataset.
-  string described = 1;
+  // Which Dataset is getting its description updated.
+  acumio.model.QualifiedName described = 1;
 
   // Important: Only those parts of the description that are non-empty
   // are modified. A blank string here is ignored. If the desire is to
@@ -138,6 +148,8 @@ message UpsertDatasetDescriptionResponse {
 
 // Namespace API messages.
 message CreateNamespaceRequest {
+  // When creating a new Namespace, note that the parent namespaces must
+  // already exist before creating the child namespace.
   acumio.model.Namespace name_space = 1;
   acumio.model.Description description = 2;
 }
@@ -217,7 +229,7 @@ message GetRepositoryRequest {
   // This is often a URI. In any case, repository_name + type should uniquely
   // identify a repository within Acumio. We "name" all repositories in Acumio.
   // Support for search by uri can occur later.
-  string repository_name = 1;
+  acumio.model.QualifiedName repository_name = 1;
   acumio.model.Repository.Type type = 2;
   bool include_description = 3;
   bool include_description_history = 4;
@@ -231,17 +243,33 @@ message GetRepositoryResponse {
 
 message ListRepositoriesRequest {
   uint32 list_max = 1;
-  string start_after_name = 2;
+  acumio.model.QualifiedName start_after_name = 2;
   acumio.model.Repository.Type start_after_type = 3;
+  // We can include the Descriptions for each Repository, but there
+  // is no option to include DescriptionHistories.
+  bool include_descriptions = 4;
 }
 
 message ListRepositoriesResponse {
   repeated acumio.model.Repository repository = 1;
+  // The descriptions will only be present if include_descriptions was set to
+  // true in the request. If they are present then the kth description will
+  // correspond to the kth repository in this response.
+  repeated acumio.model.Description description = 2;
+
+  // Returns true if there are more results, but we reached the limit
+  // in the number of returned results.
+  bool more_results = 3;
 }
 
 message RemoveRepositoryRequest {
-  string repository_name = 1;
+  acumio.model.QualifiedName repository_name = 1;
   acumio.model.Repository.Type type = 2;
+  // If set to true, then the listed repository will be removed even if
+  // there are datasets that are presumably a part of that Repository.
+  // If false, the listed repositry will only be removed if there are
+  // no Datasets in the repository.
+  bool force = 3;
 }
 
 message RemoveRepositoryResponse {
@@ -249,7 +277,7 @@ message RemoveRepositoryResponse {
 }
 
 message UpdateRepositoryRequest {
-  string repository_name = 1;
+  acumio.model.QualifiedName repository_name = 1;
   acumio.model.Repository.Type type = 2;
   acumio.model.Repository repository = 3;
 }
@@ -258,14 +286,28 @@ message UpdateRepositoryResponse {
   // Intentionally Empty.
 }
 
+message UpdateRepositoryWithDescriptionRequest {
+  // Fully qualified Namespace.
+  acumio.model.QualifiedName repository_name = 1;
+  acumio.model.Repository.Type type = 2;
+  acumio.model.Repository update = 3;
+  acumio.model.Description updated_description = 4;
+  bool clear_description = 5;
+}
+
+message UpdateRepositoryWithDescriptionResponse {
+  // Intentionally Empty.
+}
+
 message UpsertRepositoryDescriptionRequest {
-  // The "described" string is the fully-qualified name of the Repository.
-  string described = 1;
+  // The "described" identifies the Repository along with the type.
+  acumio.model.QualifiedName described = 1;
+  acumio.model.Repository.Type type = 2;
   // Here is the update.
-  acumio.model.Description update = 2;
+  acumio.model.Description update = 3;
   // If true, we ignore the update.contents and set the contents to
   // an empty string for the Repository description we are updating.
-  bool clear_description = 3;
+  bool clear_description = 4;
 }
 
 message UpsertRepositoryDescriptionResponse {
@@ -417,6 +459,8 @@ service Server {
   rpc RemoveDataset(RemoveDatasetRequest) returns (RemoveDatasetResponse) {}
   rpc SearchDatasets(SearchDatasetsRequest) returns (SearchDatasetsResponse) {}
   rpc UpdateDataset(UpdateDatasetRequest) returns (UpdateDatasetResponse) {}
+  rpc UpdateDatasetWithDescription(UpdateDatasetWithDescriptionRequest)
+      returns (UpdateDatasetWithDescriptionResponse) {}
   rpc UpsertDatasetDescription(UpsertDatasetDescriptionRequest) returns
       (UpsertDatasetDescriptionResponse) {}
 // Namespace APIs
@@ -441,6 +485,8 @@ service Server {
       (RemoveRepositoryResponse) {}
   rpc UpdateRepository(UpdateRepositoryRequest) returns
       (UpdateRepositoryResponse) {}
+  rpc UpdateRepositoryWithDescription(UpdateRepositoryWithDescriptionRequest)
+      returns (UpdateRepositoryWithDescriptionResponse) {}
   rpc UpsertRepositoryDescription(UpsertRepositoryDescriptionRequest) returns
       (UpsertRepositoryDescriptionResponse) {}
 // User APIs.

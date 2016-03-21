@@ -9,19 +9,16 @@
 //               repository of Namespaces.
 //============================================================================
 
-#include "mem_repository.h"
+#include <grpc++/support/status.h>
+#include "described_repository.h"
 #include "description.pb.h"
 #include "names.pb.h"
-#include <grpc++/support/status.h>
 
 namespace acumio {
 
 namespace model {
 
-struct DescribedNamespace {
-  Namespace name_space;
-  DescriptionHistory description_history;
-};
+typedef Described<Namespace> DescribedNamespace;
 
 } // namespace model
 
@@ -32,41 +29,128 @@ struct DescribedNamespace {
 // (Joshua Block: Effective Java rule number 14).
 class NamespaceRepository {
  public:
-  typedef mem_repository::MemRepository<model::DescribedNamespace> _Repository;
+  typedef mem_repository::DescribedRepository<model::Namespace> _Repository;
   typedef _Repository::PrimaryIterator PrimaryIterator;
   typedef _Repository::SecondaryIterator SecondaryIterator;
 
   NamespaceRepository();
   ~NamespaceRepository();
 
-  inline grpc::Status Add(const model::DescribedNamespace& name_space) {
-    return repository_->Add(name_space);
+  inline grpc::Status AddWithDescription(const model::Namespace& name_space,
+                                         const model::Description& desc) {
+    return repository_->AddWithDescription(name_space, desc);
   }
 
-  grpc::Status Get(const std::string& full_name, model::Namespace* elt) const;
+  inline grpc::Status AddWithNoDescription(const model::Namespace& name_space) {
+    return repository_->AddWithNoDescription(name_space);
+  }
 
-  grpc::Status GetDescribedNamespace(const std::string& full_name,
-                                     model::DescribedNamespace* elt) const {
+  inline grpc::Status GetNamespace(const std::string& full_name,
+                             model::Namespace* elt) const {
+    std::unique_ptr<Comparable> key(new StringComparable(full_name));
+    return repository_->GetEntity(key, elt);
+  }
+
+  inline grpc::Status GetDescription(const std::string& full_name,
+                                     model::Description* description) const {
     std::unique_ptr<Comparable> key(new StringComparable(full_name));
     // TODO: Translate NOT_FOUND results to present better error message.
-    return repository_->Get(key, elt);
+    //       Perhaps the best way is to push the information down to
+    //       the constructor of the generic repository so that it can
+    //       properly form the error message at the outset.
+    return repository_->GetDescription(key, description);
+  }
+
+  inline grpc::Status GetDescriptionHistory(
+      const std::string& full_name, model::DescriptionHistory* history) const {
+    std::unique_ptr<Comparable> key(new StringComparable(full_name));
+    // TODO: Translate NOT_FOUND results to present better error message.
+    //       Perhaps the best way is to push the information down to
+    //       the constructor of the generic repository so that it can
+    //       properly form the error message at the outset.
+    return repository_->GetDescriptionHistory(key, history);
+  }
+
+  inline grpc::Status GetNamespaceAndDescription(
+      const std::string& full_name,
+      model::Namespace* name_space,
+      model::Description* description) const {
+    std::unique_ptr<Comparable> key(new StringComparable(full_name));
+    // TODO: Translate NOT_FOUND results to present better error message.
+    //       Perhaps the best way is to push the information down to
+    //       the constructor of the generic repository so that it can
+    //       properly form the error message at the outset.
+    return repository_->GetEntityAndDescription(key, name_space, description);
+  }
+
+  inline grpc::Status GetNamespaceAndDescriptionHistory(
+      const std::string& full_name,
+      model::Namespace* name_space,
+      model::DescriptionHistory* history) const {
+    std::unique_ptr<Comparable> key(new StringComparable(full_name));
+    // TODO: Translate NOT_FOUND results to present better error message.
+    //       Perhaps the best way is to push the information down to
+    //       the constructor of the generic repository so that it can
+    //       properly form the error message at the outset.
+    return repository_->GetEntityAndDescriptionHistory(key,
+                                                       name_space,
+                                                       history);
   }
 
   inline grpc::Status Remove(const std::string& full_name) {
     std::unique_ptr<Comparable> key(new StringComparable(full_name));
     return repository_->Remove(key);
   }
-  grpc::Status Update(const std::string& full_name,
-                      const model::Namespace& name_space);
+
+  inline grpc::Status UpdateNoDescription(const std::string& full_name,
+                                          const model::Namespace& name_space) {
+    std::unique_ptr<Comparable> key(new StringComparable(full_name));
+    return repository_->UpdateNoDescription(key, name_space);
+  }
+
+  inline grpc::Status ClearDescription(const std::string& full_name) {
+    std::unique_ptr<Comparable> key(new StringComparable(full_name));
+    return repository_->ClearDescription(key);
+  }
+
+  inline grpc::Status UpdateDescriptionOnly(
+      const std::string& full_name,
+      const model::Description& description) {
+    std::unique_ptr<Comparable> key(new StringComparable(full_name));
+    return repository_->UpdateDescriptionOnly(key, description);
+  }
+
+  inline grpc::Status UpdateAndClearDescription(
+      const std::string& full_name,
+      const model::Namespace& name_space) {
+    std::unique_ptr<Comparable> key(new StringComparable(full_name));
+    return repository_->UpdateAndClearDescription(key, name_space);
+  }
+
+  inline grpc::Status UpdateWithDescription(
+      const std::string& full_name,
+      const model::Namespace& update,
+      const model::Description& description) {
+    std::unique_ptr<Comparable> key(new StringComparable(full_name));
+    return repository_->UpdateWithDescription(key, update, description);
+  }
 
   PrimaryIterator LowerBoundByFullName(const std::string& full_name) {
     std::unique_ptr<Comparable> key(new StringComparable(full_name));
     return repository_->LowerBound(key);
   }
 
+  const PrimaryIterator primary_end() const {
+    return repository_->primary_end();
+  }
+
   SecondaryIterator LowerBoundByShortName(const std::string& short_name) {
     std::unique_ptr<Comparable> string_key(new StringComparable(short_name));
     return repository_->LowerBoundByIndex(string_key, 0);
+  }
+
+  const SecondaryIterator secondary_end(int index_number) const {
+    return repository_->secondary_end(index_number);
   }
 
  private:
