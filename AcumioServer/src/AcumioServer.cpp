@@ -45,7 +45,7 @@ using grpc::ServerContext;
 using grpc::ServerCredentials;
 using grpc::Status;
 
-//namespace po  = boost::program_options;
+namespace po = boost::program_options;
 
 namespace acumio {
 namespace model {
@@ -291,7 +291,7 @@ void readFileToString(std::string fileName, std::string* results) {
 } // end anonymous namespace.
 */
 
-void RunServer(std::string keyFile, std::string certKeyFile) {
+void RunServer(std::string address) {
   std::unique_ptr<acumio::crypto::EncrypterInterface> encrypter(
     new acumio::crypto::NoOpEncrypter());
   uint64_t salt_seed = 1;
@@ -310,7 +310,6 @@ void RunServer(std::string keyFile, std::string certKeyFile) {
   std::unique_ptr<acumio::DatasetService> dataset_service(new DatasetService());
   ServerImpl service(std::move(dataset_service), std::move(namespace_service),
                      std::move(repository_service), std::move(user_service));
-  std::string server_address("Flying-Ubuntu-Dragon:1782");
   grpc::ServerBuilder builder;
   /**
    This code assumes ssl connection.
@@ -326,15 +325,15 @@ void RunServer(std::string keyFile, std::string certKeyFile) {
   ssl_opts.pem_key_cert_pairs.push_back(pkcp);
   std::shared_ptr<ServerCredentials> credentials =
       grpc::SslServerCredentials(ssl_opts);
-  builder.AddListeningPort(server_address, credentials);
+  builder.AddListeningPort(address, credentials);
   **/
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  builder.AddListeningPort(address, grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we commmunicate with
   // clients.
   builder.RegisterService(&service);
   // Finally, assemble the server.
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
-  std::cout << "Server listening on " << server_address <<  std::endl;
+  std::cout << "Server listening on " << address <<  std::endl;
 
   // Wait forever for server shutdown. Shutdown operation must be done on
   // separate thread.
@@ -345,30 +344,45 @@ void RunServer(std::string keyFile, std::string certKeyFile) {
 } // end namespace acumio
 
 int main(int argc, char** argv) {
-/*
-  po::options_description desc("Allowed options");
+
+  po::options_description desc("Allowed/Required options");
   desc.add_options()
-      ("help", "product help message")
-      ("sslKeyFile", po::value<string>(), "Name of ssl key file")
-      ("certificate", po::value<string>(), "Name of file holding certificate")
-  ;
+      ("help,h", "product help message")
+      ("address,a", po::value<string>(),
+       "Host + port address of server. Example: mydomain.com:1782. Required. "
+       "May also be specified without '-a' flag as positional argument.");
+      //("sslKeyFile,k", po::value<string>(), "Name of ssl key file")
+      //("certificate", po::value<string>(), "Name of file holding certificate")
 
+  po::positional_options_description p;
+  // This specifies that the "address" option is a "positional" option, i.e.,
+  // not requiring a flag to specify it. The parameter 1 specifies that we
+  // allow exactly 1 address and no more.
+  p.add("address", 1);
   po::variables_map var_map;
-  po::store(po::parse_command_line(argc, argv, desc), var_map);
-  po::notify(var_map);
+  po::store(po::command_line_parser(argc, argv).
+            options(desc).positional(p).run(),
+            var_map);
 
-  if (var_map.count("help") > 0) {
+  if (var_map.count("help") > 0 || var_map.count("address") == 0) {
     cout << desc << "\n";
+    cout << "Sample command-line: AcumioServer.exe mydomain.com:1782\n";
     return 1;
   }
 
+  po::notify(var_map);
+  std::string address = var_map["address"].as<string>();
+/*
+  TODO: Clean this up. Commented-out code looks ugly. Saving this until
+  we start implementing ssl.
   std::string ssl_key_file = var_map["sslKeyFile"].as<string>();
   std::string certificate = var_map["certificate"].as<string>();
   cout << "keyFile name: " << ssl_key_file << "; certificate file name: "
        << certificate;
-*/
+
   std::string ssl_key_file = "/home/bill/acumio/ssl/private/acumioserver.key";
   std::string certificate = "/home/bill/acumio/ssl/certs/Flying-Ubuntu-Dragon.crt";
-  acumio::model::server::RunServer(ssl_key_file, certificate);
+*/
+  acumio::model::server::RunServer(address);
   return 0;
 }

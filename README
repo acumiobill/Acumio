@@ -76,11 +76,6 @@ If all goes well, you should be able to first start the AcumioServer.exe
 by invoking it directly, then invoke the AcumioCommandLine.exe.
 
 TODO (In rough priority order):
-	* Introduce command-line args.
-		Currently, parallel development is thwarted by a lack
-		of command-line arguments. The point of this will be
-		to -- for example -- specify machine and port address.
-		At the moment, this is hard-coded to my machine.
 	* Complete Basic API definitions and implementations.
 		This is nearly done for the Basic APIs, but the search
 		style APIs will require extra thought. The Basic APIs
