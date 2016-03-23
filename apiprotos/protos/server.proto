@@ -21,7 +21,7 @@ message ConcatInputResponse {
 // Dataset API messages.
 message CreateDatasetRequest {
   acumio.model.Dataset dataset = 1;
-  acumio.model.DatasetDescription description = 2;
+  acumio.model.MultiDescription description = 2;
 }
 
 message CreateDatasetResponse {
@@ -46,8 +46,8 @@ message GetDatasetResponse {
   // the requested order. Similar for the description and description_history
   // results.
   repeated acumio.model.Dataset dataset = 1;
-  repeated acumio.model.DatasetDescription description = 2;
-  repeated acumio.model.DatasetDescriptionHistory description_history = 3;
+  repeated acumio.model.MultiDescription description = 2;
+  repeated acumio.model.MultiDescriptionHistory description_history = 3;
 }
 
 message RemoveDatasetRequest {
@@ -92,8 +92,8 @@ message SearchDatasetsResponse {
   // the kth dataset_description corresponds to the kth dataset and similar
   // for dataset_description_history.
   repeated acumio.model.Dataset dataset = 1;
-  repeated acumio.model.DatasetDescription description = 2;
-  repeated acumio.model.DatasetDescriptionHistory description_history = 3;
+  repeated acumio.model.MultiDescription description = 2;
+  repeated acumio.model.MultiDescriptionHistory description_history = 3;
   uint32 min_query_score = 4;
   bool more_results = 5;
 }
@@ -113,7 +113,7 @@ message UpdateDatasetWithDescriptionRequest {
   // Fully qualified name of the Dataset.
   acumio.model.QualifiedName name = 1;
   acumio.model.Dataset update = 2;
-  acumio.model.DatasetDescription updated_description = 3;
+  acumio.model.MultiDescription updated_description = 3;
   bool clear_description = 4;
   repeated string clear_attribute_description = 5;
 }
@@ -131,14 +131,14 @@ message UpsertDatasetDescriptionRequest {
   // clear out a particular part of the description, use the
   // clear_dataset_description and/or the clear_attribute_description
   // attributes.
-  acumio.model.DatasetDescription update = 2;
+  acumio.model.MultiDescription update = 2;
 
   // If set, we ignore the update.description.contents attribute and set it to
   // an empty string.
   bool clear_dataset_description = 3;
   // For each listed attribute here, we set the associated description to an
   // empty string. The strings are the keys to the map that would be part of
-  // the DatasetDescription.attribute_description attribute.
+  // the MultiDescription.attribute_description attribute.
   repeated string clear_attribute_description = 4;
 }
 

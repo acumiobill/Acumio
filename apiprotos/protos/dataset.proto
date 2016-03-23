@@ -1,7 +1,6 @@
 syntax = "proto3";
 
 import "attributes.proto";
-import "description.proto";
 import "names.proto";
 import "google/protobuf/descriptor.proto";
 
@@ -294,47 +293,34 @@ message Dataset {
   Discovery discovery = 20;
 }
 
-// We will use DatasetDescriptions in our APIs in a way that allows
-// us to know which Datasets they apply to. The DatasetDescription
-// itself does not have that knowledge.
-// The reason not to put it directly on the Dataset itself is because
-// we will want to manage the descriptions differently. It will be
-// common to want just the Dataset without the Description, or sometimes,
-// the other way around.
-message DatasetDescription {
-  Description description = 1;
-  // Assuming a single RelationalType the keys are formed as the name
-  // of the attributes.
-  // If StructuredType, the keys are formed as the attribute path names.
-  // So for example, if the attribute type is a simple type, it's just
-  // the name of the attribute. However, for an attribute "foo" with
-  // type MyStruct (which is a structured type) containing attributes
-  // "bar" and "cat", the key "foo" refers to the overall structure,
-  // and the key "foo.bar" refers to the "bar" attribute of "foo", and
-  // the key "foo.cat" refers to the "cat" attribute of "foo". Similarly,
-  // if there is a MapType attribute "foo" with the type for the value
-  // of the MapType being MyStruct, then a similar naming convention
-  // applies.
-  // For a SemiStructured type, note that the SemiStructuredType has 
-  // the structure attribute, which is a map from key-names to StructuredTypes.
-  // So for example, if we have this map:
-  //      "ErrorText"  : ErrorMessageLog
-  //      "StackTrace" : StackTraceMesssage
-  // With ErrorMessageLog formed as:
-  //   { int32 error_code = 1; string error_message = 2}
-  // and StackTrace formed as:
-  //   { message Line { string source_file_name = 1; uint32 line_number = 2}
-  //     repeated Line line = 1;
-  //   }
-  // We can give a description for "ErrorText" using the key "ErrorText",
-  // and the key "ErrorText.error_code" to describe the error_code attribute
-  // of ErrorMessageLog, and "StackTrace" to describe "StackTrace" and
-  // "StackTrace.source_file_name" to describe the source_file_name attribute
-  // of a StackTraceMessage.
-  map<string, Description> attribute_description = 2;
-}
-
-message DatasetDescriptionHistory {
-  DescriptionHistory dataset_history = 1;
-  map<string, DescriptionHistory> attribute_history = 2;
-}
+// When providing descriptions for Datasets, we will use MultiDescrpitions.
+// a single tag with the string equal to the shortname of the Dataset
+// is used to describe the overall Dataset.
+// Assuming a single RelationalType the keys are formed as the name
+// of the attributes.
+// If StructuredType, the keys are formed as the attribute path names.
+// So for example, if the attribute type is a simple type, it's just
+// the name of the attribute. However, for an attribute "foo" with
+// type MyStruct (which is a structured type) containing attributes
+// "bar" and "cat", the key "foo" refers to the overall structure,
+// and the key "foo.bar" refers to the "bar" attribute of "foo", and
+// the key "foo.cat" refers to the "cat" attribute of "foo". Similarly,
+// if there is a MapType attribute "foo" with the type for the value
+// of the MapType being MyStruct, then a similar naming convention
+// applies.
+// For a SemiStructured type, note that the SemiStructuredType has 
+// the structure attribute, which is a map from key-names to StructuredTypes.
+// So for example, if we have this map:
+//      "ErrorText"  : ErrorMessageLog
+//      "StackTrace" : StackTraceMesssage
+// With ErrorMessageLog formed as:
+//   { int32 error_code = 1; string error_message = 2}
+// and StackTrace formed as:
+//   { message Line { string source_file_name = 1; uint32 line_number = 2}
+//     repeated Line line = 1;
+//   }
+// We can give a description for "ErrorText" using the key "ErrorText",
+// and the key "ErrorText.error_code" to describe the error_code attribute
+// of ErrorMessageLog, and "StackTrace" to describe "StackTrace" and
+// "StackTrace.source_file_name" to describe the source_file_name attribute
+// of a StackTraceMessage.

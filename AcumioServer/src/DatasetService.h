@@ -11,6 +11,7 @@
 #include <grpc++/grpc++.h>
 #include <server.pb.h>
 #include <dataset.pb.h>
+#include <description.pb.h>
 
 #include "encrypter.h"
 
@@ -22,7 +23,7 @@ class DatasetService {
   ~DatasetService();
 
   grpc::Status CreateDataset(const model::Dataset& dataset,
-                             const model::DatasetDescription& description) {
+                             const model::MultiDescription& description) {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 

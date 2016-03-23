@@ -38,3 +38,14 @@ message Description {
 message DescriptionHistory {
   repeated Description version = 2;
 }
+
+// Similar to Description, but allows multiple Descriptions with each
+// looked up by a tag. The "tagging" convention is documented where used
+// in the .proto files that will commonly use the MultiDescription.
+message MultiDescription {
+  map<string, Description> description = 1;
+}
+
+message MultiDescriptionHistory {
+  map<string, DescriptionHistory> history = 1;
+}

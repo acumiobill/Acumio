@@ -85,9 +85,6 @@ TODO (In rough priority order):
 		for Dataset. For Repository, the validation checks (i.e.,
 		foreign-key type checks) still need to be completed.
 		SubTasks:
-			* Modify Dataset APIs to change "DatasetDescription"
-			  to "MultiDescription". (Similar concept, but
-			  more general).
 			* Introduce MultiDescribedRepository - similar
 			  to DescribedRepository.
 			* Introduce DatasetRepository based on
