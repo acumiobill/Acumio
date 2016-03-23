@@ -39,4 +39,10 @@ message Namespace {
   // where child.name represents the short-name of the child entity.
   // For all but the root Namespace, the seperator must be non-empty.
   string separator = 3;
+
+  // If true, this Namespace is associated with a Repository. There is
+  // no guarantee that the Repository is registered in Acumio,
+  // but at least, it should be clear that anything in that Namespace
+  // is found in the described repository.
+  bool is_repository_name = 4;
 }

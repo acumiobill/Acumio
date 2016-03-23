@@ -23,10 +23,11 @@ class RepositoryService {
   ~RepositoryService();
 
   grpc::Status CreateRepository(const model::Repository& repository,
-                                const model::Description& description);
+                                const model::Description& description,
+                                bool create_or_associate_namespace,
+                                const std::string& namespace_separator);
 
   grpc::Status GetRepository(const model::QualifiedName& repository_name,
-                             model::Repository_Type type,
                              bool include_description,
                              bool include_description_history,
                              model::server::GetRepositoryResponse* response);
@@ -34,63 +35,83 @@ class RepositoryService {
   grpc::Status ListRepositories(
       uint32_t list_max,
       const model::QualifiedName& start_after_name,
-      model::Repository_Type start_after_type,
       bool include_descriptions,
       model::server::ListRepositoriesResponse* response);
 
   grpc::Status RemoveRepository(const model::QualifiedName& repository_name,
-                                model::Repository_Type type,
-                                bool force);
+                                bool force,
+                                bool remove_or_disassociate_namespace);
 
   grpc::Status UpdateRepository(const model::QualifiedName& repository_name,
-                                model::Repository_Type type,
-                                const model::Repository& update);
+                                const model::Repository& update,
+                                bool force);
 
   grpc::Status UpdateRepositoryWithDescription(
       const model::QualifiedName& repository_name,
-      model::Repository_Type repository_type,
       const model::Repository& update,
       const model::Description& updated_description,
-      bool clear_description);
+      bool clear_description,
+      bool force);
 
   grpc::Status UpsertRepositoryDescription(
       const model::QualifiedName& repository_name,
-      model::Repository_Type repository_type,
       const model::Description& update,
       bool clear_description);
 
  private:
+  grpc::Status AssociateNamespace(const model::Namespace& found_namespace,
+                                  const model::Description& found_description,
+                                  const model::Description& update_description,
+                                  const std::string& desired_separator);
+
+  grpc::Status CreateAssociatedNamespace(const std::string& full_name,
+                                         const std::string& parent_full_name,
+                                         const std::string& name,
+                                         const std::string& separator,
+                                         const model::Description& desc);
+
+  grpc::Status CreateOrAssociateNamespace(const model::Namespace& parent,
+                                          const std::string& name,
+                                          const std::string& separator,
+                                          const model::Description& desc);
+
   // Used internally when we have a GetRepository with the request to just
   // get the Repository without the Descriptions.
   grpc::Status GetJustRepository(
       const model::QualifiedName& repository_name,
-      model::Repository_Type repository_type,                           
       model::server::GetRepositoryResponse* response);
 
-  grpc::Status ValidateNewRepository(const model::Repository& repository);
+  grpc::Status GetParentNamespace(const model::QualifiedName& repository_name,
+                                  model::Namespace* parent) const;
 
-  grpc::Status ValidateRepositoryRemoval(
-      const model::QualifiedName& name,
-      model::Repository_Type type);
-
-  grpc::Status ValidateRepositoryUpdate(
-      const model::QualifiedName& name,
-      model::Repository_Type type,
-      const model::Repository& repository);
+  // Checks to see if provided Namespace has any elements in it:
+  // either Namespaces, or Repositories (or later, TODO: Datasets).
+  // TODO: Create a unified InternalNamespaceService class for providing
+  // common code between NamespaceService and RepositoryService. This
+  // is otherwise copying quite a bit of code.
+  grpc::Status IsNamespaceEmpty(const model::Namespace& name_space,
+                                bool* result) const;
 
   RepositoryRepository::PrimaryIterator IteratorStart(
-    const model::QualifiedName& start_after_name,
-    model::Repository_Type start_after_type) const;
+    const model::QualifiedName& start_after_name) const;
 
   grpc::Status ListJustRepositories(
       RepositoryRepository::PrimaryIterator it,
       uint32_t list_max,
-      model::server::ListRepositoriesResponse* response);
+      model::server::ListRepositoriesResponse* response) const;
 
   grpc::Status ListRepositoriesAndDescriptions(
       RepositoryRepository::PrimaryIterator it,
       uint32_t list_max,
-      model::server::ListRepositoriesResponse* response);
+      model::server::ListRepositoriesResponse* response) const;
+
+  grpc::Status ValidateNewRepository(const model::Repository& repository) const;
+
+  // Returns OK status if the Namespace with the same name as repository_name
+  // exists, and is associated with a repository.
+  grpc::Status VerifyAssociatedNamespaceExists(
+      const model::Namespace& parent,
+      const model::QualifiedName& repository_name) const;
 
   std::shared_ptr<RepositoryRepository> repository_;
   std::shared_ptr<NamespaceRepository> namespace_repository_;

@@ -59,60 +59,47 @@ class RepositoryRepository {
   }
 
   grpc::Status GetRepository(const model::QualifiedName& full_name,
-                             model::Repository_Type type,
                              model::Repository* elt) const;
 
   grpc::Status GetDescription(const model::QualifiedName& full_name,
-                              model::Repository_Type type,
                               model::Description* description) const;
 
   grpc::Status GetDescriptionHistory(
       const model::QualifiedName& full_name,
-      model::Repository_Type type,
       model::DescriptionHistory* history) const;
 
   grpc::Status GetRepositoryAndDescription(
       const model::QualifiedName& full_name,
-      model::Repository_Type type,
       model::Repository* repository,
       model::Description* description) const;
 
   grpc::Status GetRepositoryAndDescriptionHistory(
       const model::QualifiedName& full_name,
-      model::Repository_Type type,
       model::Repository* repository,
       model::DescriptionHistory* history) const;
 
-  grpc::Status Remove(const model::QualifiedName& full_name,
-                      model::Repository_Type type);
+  grpc::Status Remove(const model::QualifiedName& full_name);
 
   grpc::Status UpdateNoDescription(const model::QualifiedName& full_name,
-                                   model::Repository_Type type,
                                    const model::Repository& repository);
 
-  grpc::Status ClearDescription(const model::QualifiedName& full_name,
-                                model::Repository_Type type);
+  grpc::Status ClearDescription(const model::QualifiedName& full_name);
 
   grpc::Status UpdateDescriptionOnly(
       const model::QualifiedName& full_name,
-      model::Repository_Type type,
       const model::Description& description);
 
   grpc::Status UpdateAndClearDescription(
       const model::QualifiedName& full_name,
-      model::Repository_Type type,
       const model::Repository& repository);
 
   grpc::Status UpdateWithDescription(
       const model::QualifiedName& full_name,
-      model::Repository_Type type,
       const model::Repository& repository,
       const model::Description& description);
 
 
-  PrimaryIterator LowerBoundByNameAndType(
-      const model::QualifiedName& name,
-      model::Repository_Type type) const;
+  PrimaryIterator LowerBoundByFullName(const model::QualifiedName& name) const;
 
   inline PrimaryIterator primary_begin() const {
     return repository_->primary_begin();
@@ -122,15 +109,10 @@ class RepositoryRepository {
     return repository_->primary_end();
   }
 
-  SecondaryIterator LowerBoundByName(const model::QualifiedName& name) const;
   SecondaryIterator LowerBoundByNamespace(const std::string& name_space) const;
-  inline const SecondaryIterator name_iter_end() const {
+  inline const SecondaryIterator namespace_iter_end() const {
     return repository_->secondary_end(0);
   }
-  inline const SecondaryIterator namespace_iter_end() const {
-    return repository_->secondary_end(1);
-  }
-  
 
  private:
   std::unique_ptr<_Repository> repository_;

@@ -219,6 +219,17 @@ message UpsertNamespaceDescriptionResponse {
 message CreateRepositoryRequest {
   acumio.model.Repository repository = 1;
   acumio.model.Description description = 2;
+  // When creating a Repository, there needs to either already exist
+  // a Namespace for that repository, or we need to create one to
+  // go with it. The bottom line is that you cannot have a Repository
+  // without having its Namespace. By setting this option, you are
+  // specifying that you want to create the namespace if it does
+  // not yet exist, or to update the current namespace so that it
+  // is associated with this repository.
+  bool create_or_associate_namespace = 3;
+  // If we need to create a new namespace, we need a separator for it!
+  // This provides the separator.
+  string namespace_separator = 4;
 }
 
 message CreateRepositoryResponse {
@@ -226,13 +237,12 @@ message CreateRepositoryResponse {
 }
 
 message GetRepositoryRequest {
-  // This is often a URI. In any case, repository_name + type should uniquely
+  // This is often a URI. In any case, repository_name should uniquely
   // identify a repository within Acumio. We "name" all repositories in Acumio.
   // Support for search by uri can occur later.
   acumio.model.QualifiedName repository_name = 1;
-  acumio.model.Repository.Type type = 2;
-  bool include_description = 3;
-  bool include_description_history = 4;
+  bool include_description = 2;
+  bool include_description_history = 3;
 }
 
 message GetRepositoryResponse {
@@ -244,10 +254,9 @@ message GetRepositoryResponse {
 message ListRepositoriesRequest {
   uint32 list_max = 1;
   acumio.model.QualifiedName start_after_name = 2;
-  acumio.model.Repository.Type start_after_type = 3;
   // We can include the Descriptions for each Repository, but there
   // is no option to include DescriptionHistories.
-  bool include_descriptions = 4;
+  bool include_descriptions = 3;
 }
 
 message ListRepositoriesResponse {
@@ -264,12 +273,23 @@ message ListRepositoriesResponse {
 
 message RemoveRepositoryRequest {
   acumio.model.QualifiedName repository_name = 1;
-  acumio.model.Repository.Type type = 2;
   // If set to true, then the listed repository will be removed even if
   // there are datasets that are presumably a part of that Repository.
   // If false, the listed repositry will only be removed if there are
   // no Datasets in the repository.
-  bool force = 3;
+  bool force = 2;
+
+  // If set to true, then this will attempt to also remove the associated
+  // namespace for the repository. If the associated namespace also has
+  // namespaces or datasets underneath it, then this will merely
+  // disassociate the namespace from the dataset.
+  // If false, the namespace and its sub-namespaces will still relate
+  // that they are associated with a repository, but the repository will
+  // simply not be registered.
+  // If for whatever reason, the Repository is not removed by this process --
+  // such as if force is set to false, and there are potentially orphans,
+  // the namespace will remain associated with the repository.
+  bool remove_or_disassociate_namespace = 3;
 }
 
 message RemoveRepositoryResponse {
@@ -278,8 +298,25 @@ message RemoveRepositoryResponse {
 
 message UpdateRepositoryRequest {
   acumio.model.QualifiedName repository_name = 1;
-  acumio.model.Repository.Type type = 2;
-  acumio.model.Repository repository = 3;
+  acumio.model.Repository repository = 2;
+  // If the operation requires that we orphan some datasets, the force
+  // option allows that to happen. Otherwise, we will generate an error
+  // if we try to update a repository in such a way as to cause the
+  // name to change.
+  // The behavior here is somewhat more constrained than with either
+  // the create or remove operations: For the remove operations, we have
+  // "force" and "remove_or_disassociate_namespace", while for the
+  // create operation, we have "create_or_associate_namespace". The "force"
+  // flag here acts as all 3 of those flags set in this case.
+  // So, in the event that we are effectively changing the name of the
+  // repository, this will create a new namespace matching the new name
+  // if it does not exist, or if the namespace does exist, it will
+  // associate it with the namespace. In addition, it will disassociate
+  // itself with the pre-existing namespace, and if the pre-existing
+  // namespace is empty, it will remove it.
+  // If we have to create a new namespace, the separator for the new
+  // namespace will match the old separator.
+  bool force = 3;
 }
 
 message UpdateRepositoryResponse {
@@ -289,10 +326,11 @@ message UpdateRepositoryResponse {
 message UpdateRepositoryWithDescriptionRequest {
   // Fully qualified Namespace.
   acumio.model.QualifiedName repository_name = 1;
-  acumio.model.Repository.Type type = 2;
-  acumio.model.Repository update = 3;
-  acumio.model.Description updated_description = 4;
-  bool clear_description = 5;
+  acumio.model.Repository update = 2;
+  acumio.model.Description updated_description = 3;
+  bool clear_description = 4;
+  // See the description of "force" for the UpdateRepositoryRequest message.
+  bool force = 5;
 }
 
 message UpdateRepositoryWithDescriptionResponse {
@@ -302,12 +340,11 @@ message UpdateRepositoryWithDescriptionResponse {
 message UpsertRepositoryDescriptionRequest {
   // The "described" identifies the Repository along with the type.
   acumio.model.QualifiedName described = 1;
-  acumio.model.Repository.Type type = 2;
   // Here is the update.
-  acumio.model.Description update = 3;
+  acumio.model.Description update = 2;
   // If true, we ignore the update.contents and set the contents to
   // an empty string for the Repository description we are updating.
-  bool clear_description = 4;
+  bool clear_description = 3;
 }
 
 message UpsertRepositoryDescriptionResponse {

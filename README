@@ -84,6 +84,18 @@ TODO (In rough priority order):
 		User and Namespace and most complete for Repository, but not
 		for Dataset. For Repository, the validation checks (i.e.,
 		foreign-key type checks) still need to be completed.
+		SubTasks:
+			* Modify Dataset APIs to change "DatasetDescription"
+			  to "MultiDescription". (Similar concept, but
+			  more general).
+			* Introduce MultiDescribedRepository - similar
+			  to DescribedRepository.
+			* Introduce DatasetRepository based on
+			  MultiDescribedRepository.
+			* Modify DatasetService to use DatasetRepository
+			  (currently, implementation is with stubs). Have
+			 stubs for Validation.
+			* Specify validations.
 	* Fix Acumio and Open-Source Copyright information.
 		Need to check legal requirements for including open-source
 		usage information. We are currently using:
@@ -95,6 +107,12 @@ TODO (In rough priority order):
 		so far, but it will eventually get buried under its own
 		weight without tests. (Probably use boost test libraries
 		for this).
+	* Fix some "Code Smells"
+		Relation between Repository and Namespace is a bit strained.
+		Either try to find a simpler model, or just clean up the
+		code. Currently, the RepositoryService has some long
+		methods (over 100 lines of code) and it could share some
+		code with the NamespaceService.
 	* Make Thread Safe
 		The underlying MemRepository class
 		(AcumioServer/src/mem_repository.h)
@@ -146,6 +164,15 @@ TODO (In rough priority order):
 		We will want to be integrated with external authenticators
 		as well as internal authenticators. Note that we want
 		SSL before Authentication.
+	* Add error logging
+		This is separate from audit logging, which should generate
+		queryable messages available in our APIs. This instead,
+		is about generating messages for the purposes of debugging
+		our server. Need to select a decent logger for this (probably
+		use boost libraries).
+	* Add I18n Support.
+		Really low on priority, but at some point, we should address
+		this.
 
 	
 

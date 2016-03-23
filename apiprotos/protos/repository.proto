@@ -24,5 +24,4 @@ message Repository {
   QualifiedName name = 1;
   Type type = 2;
   Configuration connect_config = 3;
-  string description = 4;
 }

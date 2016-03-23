@@ -170,38 +170,38 @@ class ServerImpl final : public Server::Service {
                           const CreateRepositoryRequest* request,
                           CreateRepositoryResponse* response) override {
     return repository_service_->CreateRepository(request->repository(),
-        request->description());
+        request->description(), request->create_or_associate_namespace(),
+        request->namespace_separator());
   }
 
   Status GetRepository(ServerContext* context,
                        const GetRepositoryRequest* request,
                        GetRepositoryResponse* response) override {
     return repository_service_->GetRepository(request->repository_name(),
-        request->type(), request->include_description(),
-        request->include_description_history(), response);
+        request->include_description(), request->include_description_history(),
+        response);
   }
 
   Status ListRepositories(ServerContext* context,
                         const ListRepositoriesRequest* request,
                         ListRepositoriesResponse* response) override {
     return repository_service_->ListRepositories(request->list_max(),
-        request->start_after_name(), request->start_after_type(),
-        request->include_descriptions(), response);
+        request->start_after_name(), request->include_descriptions(),
+        response);
   }
 
   Status RemoveRepository(ServerContext* context,
                           const RemoveRepositoryRequest* request,
                           RemoveRepositoryResponse* response) override {
     return repository_service_->RemoveRepository(request->repository_name(),
-                                                 request->type(),
-                                                 request->force());
+        request->force(), request->remove_or_disassociate_namespace());
   }
 
   Status UpdateRepository(ServerContext* context,
                           const UpdateRepositoryRequest* request,
                           UpdateRepositoryResponse* response) override {
     return repository_service_->UpdateRepository(request->repository_name(),
-        request->type(), request->repository());
+        request->repository(), request->force());
   }
 
   Status UpdateRepositoryWithDescription(
@@ -209,8 +209,9 @@ class ServerImpl final : public Server::Service {
       const UpdateRepositoryWithDescriptionRequest* request,
       UpdateRepositoryWithDescriptionResponse* repsonse) override {
     return repository_service_->UpdateRepositoryWithDescription(
-        request->repository_name(), request->type(), request->update(),
-        request->updated_description(), request->clear_description());
+        request->repository_name(), request->update(),
+        request->updated_description(), request->clear_description(),
+        request->force());
   }
 
   Status UpsertRepositoryDescription(
@@ -218,8 +219,7 @@ class ServerImpl final : public Server::Service {
       const UpsertRepositoryDescriptionRequest* request,
       UpsertRepositoryDescriptionResponse* response) override {
     return repository_service_->UpsertRepositoryDescription(
-        request->described(), request->type(), request->update(),
-        request->clear_description());
+        request->described(), request->update(), request->clear_description());
   }
 
   // User Services.

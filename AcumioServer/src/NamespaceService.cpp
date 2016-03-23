@@ -248,9 +248,9 @@ grpc::Status NamespaceService::ValidateNamespacePlusSeparatorRemoval(
 
   // We just validated for removal based on Namespaces, but now, we need to
   // check for Repositories.
-  RepositoryRepository::SecondaryIterator repository_iter =
-      repository_repository_->LowerBoundByName(name_space.name());
-  if (repository_iter != repository_repository_->name_iter_end()) {
+  RepositoryRepository::PrimaryIterator repository_iter =
+      repository_repository_->LowerBoundByFullName(name_space.name());
+  if (repository_iter != repository_repository_->primary_end()) {
     const model::Repository& found = repository_iter->second.entity;
     if (found.name().name_space() == name_space.name().name_space() &&
         found.name().name() == name_space.name().name()) {
@@ -348,15 +348,21 @@ grpc::Status NamespaceService::ValidateNamespaceUpdate(
 
   // Now, having found the Namespace, we check if any of the attributes
   // that could generate an effective Namespace-delete event have changed.
-  // (At the moment, that is actually *any* part of the Namespace).
   if (update.full_name() == namespace_name &&
       update.separator() == found.separator() &&
       update.name().name() == found.name().name()) {
-    // This is a bit of a hack: we don't have a way of extending the
-    // grpc::StatusCode codes, but if we did, what we would want to say
-    // here is that no operation is required, and it's "ok" to return
-    // "ok". We will check the error string in the return process.
-    return grpc::Status(grpc::StatusCode::CANCELLED, "ok");
+    // The only other attribute to check is the "is_repository_name"
+    // flag. If these are identical, we have no work to do in the update.
+    if (found.is_repository_name() == update.is_repository_name()) {
+      // This is a bit of a hack: we don't have a way of extending the
+      // grpc::StatusCode codes, but if we did, what we would want to say
+      // here is that no operation is required, and it's "ok" to return
+      // "ok". We will check the error string in the return process.
+      return grpc::Status(grpc::StatusCode::CANCELLED, "ok");
+    }
+    // In this case, there is no "delete" operation to check, so we just
+    // allow the update to occur.
+    return grpc::Status::OK;
   }
 
   return ValidateNamespacePlusSeparatorRemoval(it->second.entity);
