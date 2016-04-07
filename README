@@ -85,10 +85,7 @@ TODO (In rough priority order):
 		for Dataset. For Repository, the validation checks (i.e.,
 		foreign-key type checks) still need to be completed.
 		SubTasks:
-			* Modify DatasetService to use DatasetRepository
-			  (currently, implementation is with stubs). Have
-			 stubs for Validation.
-			* Specify validations.
+			* Add data validations to prevent corruption.
 	* Fix Acumio and Open-Source Copyright information.
 		Need to check legal requirements for including open-source
 		usage information. We are currently using:
@@ -127,20 +124,20 @@ TODO (In rough priority order):
 		thread-safety will be required before we can complete
 		search APIs because indexing should be performed
 		asynchronously.
-	* Integrate with Web Front End
-		Targeting the use of Angular2 with Node.js/javascript.
 	* Integrate with Apache Atlas.
 		Need details on what the certification requirements are
 		for this.
-	* Add Retrievable and queryable Audit logging.
-		Minimally, we should store every action that changes
-		state, as well as login processing.
 	* Add Lineage and Event APIs.
 		Yes. Of course, we need these. Initially, we will just
 		keep this content in-memory, however, this content has
 		different requirements than the other content: we
 		will eventually *not* want to keep this in-memory except
 		for a memory-limited LRU Cache.
+	* Integrate with Web Front End
+		Targeting the use of Angular2 with Node.js/javascript.
+	* Add Retrievable and queryable Audit logging.
+		Minimally, we should store every action that changes
+		state, as well as login processing.
 	* Fix Directory Structure.
 		The current directory structure is fine for such a small
 		project, but we should have a good "think" about what

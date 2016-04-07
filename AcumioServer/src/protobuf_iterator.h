@@ -71,7 +71,8 @@ class ProtoIterator : public std::iterator<std::forward_iterator_tag, E> {
 template <class E>
 class ConstProtoIterator :
     public std::iterator<std::forward_iterator_tag, const E> {
- typedef google::protobuf::internal::RepeatedPtrIterator<E> GoogleIterator;
+ typedef google::protobuf::internal::RepeatedPtrIterator<const E>
+     GoogleIterator;
  public:
   ConstProtoIterator(GoogleIterator delegate) : delegate_(delegate) {}
   ConstProtoIterator(const ConstProtoIterator& other) :

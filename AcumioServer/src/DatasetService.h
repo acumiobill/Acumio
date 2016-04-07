@@ -35,9 +35,7 @@ class DatasetService {
   ~DatasetService();
 
   grpc::Status CreateDataset(const model::Dataset& dataset,
-                             const model::MultiDescription& description) {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
-  }
+                             const model::MultiDescription& description);
 
   grpc::Status GetDataset(
       const _RepeatedQualifiedName& physical_name,
@@ -45,13 +43,9 @@ class DatasetService {
       const _RepeatedString& history_tags,
       _RepeatedDataset* dataset,
       _RepeatedMultiDescription* description,
-      _RepeatedMultiDescriptionHistory*  description_history) {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
-  }
+      _RepeatedMultiDescriptionHistory*  description_history);
 
-  grpc::Status RemoveDataset(const model::QualifiedName& name) {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
-  }
+  grpc::Status RemoveDataset(const model::QualifiedName& name);
 
   grpc::Status SearchDatasets(
       const model::server::SearchDatasetsRequest* request,
@@ -60,28 +54,23 @@ class DatasetService {
   }
 
   grpc::Status UpdateDataset(const model::QualifiedName& name,
-                             const model::Dataset& dataset) {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
-  }
+                             const model::Dataset& dataset);
 
   grpc::Status UpdateDatasetWithDescription(
       const model::QualifiedName& name,
-      const model::Dataset& update,
-      const model::MultiDescriptionMutationChain description_update) {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
-  }
+      const model::Dataset& dataset,
+      const model::MultiDescriptionMutationChain& description_update);
 
   grpc::Status UpdateDatasetDescription(
       const model::QualifiedName& name,
-      const model::MultiDescriptionMutationChain description_update) {
-    return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
-  }
+      const model::MultiDescriptionMutationChain& description_update);
 
  private:
 
   // Underlying Dataset storage.
   std::shared_ptr<DatasetRepository> repository_;
   std::shared_ptr<NamespaceRepository> namespace_repository_;
+  MultiMutationFactory mutation_factory_;
 };
 } // namespace acumio
 
