@@ -85,10 +85,6 @@ TODO (In rough priority order):
 		for Dataset. For Repository, the validation checks (i.e.,
 		foreign-key type checks) still need to be completed.
 		SubTasks:
-			* Introduce MultiDescribedRepository - similar
-			  to DescribedRepository.
-			* Introduce DatasetRepository based on
-			  MultiDescribedRepository.
 			* Modify DatasetService to use DatasetRepository
 			  (currently, implementation is with stubs). Have
 			 stubs for Validation.
