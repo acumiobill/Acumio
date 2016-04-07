@@ -333,6 +333,10 @@ class MultiDescribedRepository {
     return repository_->LowerBoundByIndex(key, index_number);
   }
 
+  inline const SecondaryIterator secondary_begin(int index_number) const {
+    return repository_->secondary_begin(index_number);
+  }
+
   inline const SecondaryIterator secondary_end(int index_number) const {
     return repository_->secondary_end(index_number);
   }

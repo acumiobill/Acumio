@@ -149,8 +149,12 @@ class NamespaceRepository {
     return repository_->LowerBoundByIndex(string_key, 0);
   }
 
-  const SecondaryIterator secondary_end(int index_number) const {
-    return repository_->secondary_end(index_number);
+  const SecondaryIterator short_name_begin() const {
+    return repository_->secondary_begin(0);
+  }
+
+  const SecondaryIterator short_name_end() const {
+    return repository_->secondary_end(0);
   }
 
  private:

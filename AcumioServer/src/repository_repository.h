@@ -101,10 +101,9 @@ class RepositoryRepository {
       const model::Repository& repository,
       const model::Description& description);
 
-
   PrimaryIterator LowerBoundByFullName(const model::QualifiedName& name) const;
 
-  inline PrimaryIterator primary_begin() const {
+  inline const PrimaryIterator primary_begin() const {
     return repository_->primary_begin();
   }
 
@@ -113,6 +112,11 @@ class RepositoryRepository {
   }
 
   SecondaryIterator LowerBoundByNamespace(const std::string& name_space) const;
+
+  inline const SecondaryIterator namespace_iter_begin() const {
+    return repository_->secondary_begin(0);
+  }
+
   inline const SecondaryIterator namespace_iter_end() const {
     return repository_->secondary_end(0);
   }

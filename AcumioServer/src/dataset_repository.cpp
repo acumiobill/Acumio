@@ -128,4 +128,18 @@ grpc::Status DatasetRepository::UpdateDescription(
   return repository_->UpdateDescription(key, description_update);
 }
 
+
+DatasetRepository::PrimaryIterator DatasetRepository::LowerBoundByFullName(
+    const model::QualifiedName& name) const {
+  std::unique_ptr<Comparable> key(
+      new StringPairComparable(name.name_space(), name.name()));
+  return repository_->LowerBound(key);
+}
+
+DatasetRepository::SecondaryIterator DatasetRepository::LowerBoundByNamespace(
+    const std::string& name_space) const {
+  std::unique_ptr<Comparable> key(new StringComparable(name_space));
+  return repository_->LowerBoundByIndex(key, 0);
+}
+
 } // namespace acumio

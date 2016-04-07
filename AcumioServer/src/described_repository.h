@@ -252,7 +252,7 @@ class DescribedRepository {
     return repository_->LowerBound(key);
   }
 
-  inline PrimaryIterator primary_begin() const {
+  inline const PrimaryIterator primary_begin() const {
     return repository_->primary_begin();
   }
 
@@ -263,6 +263,10 @@ class DescribedRepository {
   inline SecondaryIterator LowerBoundByIndex(
       const std::unique_ptr<Comparable>& key, int index_number) const {
     return repository_->LowerBoundByIndex(key, index_number);
+  }
+
+  inline const SecondaryIterator secondary_begin(int index_number) const {
+    return repository_->secondary_begin(index_number);
   }
 
   inline const SecondaryIterator secondary_end(int index_number) const {

@@ -22,6 +22,8 @@ namespace acumio {
 class DatasetRepository {
  public:
   typedef mem_repository::MultiDescribedRepository<model::Dataset> _Repository;
+  typedef _Repository::PrimaryIterator PrimaryIterator;
+  typedef _Repository::SecondaryIterator SecondaryIterator;
 
   DatasetRepository();
   ~DatasetRepository();
@@ -66,6 +68,26 @@ class DatasetRepository {
   grpc::Status UpdateDescription(
       const model::QualifiedName& name,
       const MultiMutationInterface* description_update);
+
+  PrimaryIterator LowerBoundByFullName(const model::QualifiedName& name) const;
+
+  inline PrimaryIterator primary_begin() const {
+    return repository_->primary_begin();
+  }
+
+  inline PrimaryIterator primary_end() const {
+    return repository_->primary_end();
+  }
+
+  SecondaryIterator LowerBoundByNamespace(const std::string& name_space) const;
+
+  inline const SecondaryIterator namespace_iter_begin() const {
+    return repository_->secondary_begin(0);
+  }
+
+  inline const SecondaryIterator namespace_iter_end() const {
+    return repository_->secondary_end(0);
+  }
 
  private:
   std::unique_ptr<_Repository> repository_;

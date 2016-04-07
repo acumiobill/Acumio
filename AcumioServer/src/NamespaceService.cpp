@@ -281,6 +281,26 @@ grpc::Status NamespaceService::ValidateNamespacePlusSeparatorRemoval(
     }
   }
 
+  // Finally, after validation for namespaces and repositories, we need to
+  // check for daatasets.
+  // TODO: Consider pulling this into a different method. This method
+  // looks rather lengthy. Each of the 3 checks can be separated.
+  DatasetRepository::SecondaryIterator dataset_namespace_iter =
+      dataset_repository_->LowerBoundByNamespace(name_space.full_name());
+  if (dataset_namespace_iter !=
+      dataset_repository_->namespace_iter_end()) {
+    const model::Dataset& found = dataset_namespace_iter->second.entity;
+    if (found.physical_name().name_space() == name_space.full_name()) {
+      std::stringstream error;
+      error << "Unable to delete Namespace with name (\""
+            << name_space.full_name()
+            << "\"). There is a corresponding Dataset with name (\""
+            << found.physical_name().name()
+            << "\") that resides in that namespace.";
+      return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, error.str());
+    }
+  }
+
   return grpc::Status::OK;
 }
 

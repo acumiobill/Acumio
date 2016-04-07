@@ -382,6 +382,10 @@ class MemRepository {
     return PrimaryIterator(main_index_.end(), &elements_);
   }
 
+  const SecondaryIterator secondary_begin(int index_number) const {
+    return SecondaryIterator(indices_[index_number].begin(), &elements_);
+  }
+
   const SecondaryIterator secondary_end(int index_number) const {
     return SecondaryIterator(indices_[index_number].end(), &elements_);
   }
