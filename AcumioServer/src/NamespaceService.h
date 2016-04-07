@@ -11,6 +11,7 @@
 #include <grpc++/grpc++.h>
 #include <server.pb.h>
 #include <names.pb.h>
+#include "dataset_repository.h"
 #include "namespace_repository.h"
 #include "repository_repository.h"
 
@@ -19,6 +20,7 @@ namespace acumio {
 class NamespaceService {
  public:
   NamespaceService(std::shared_ptr<NamespaceRepository> repository,
+                   std::shared_ptr<DatasetRepository> dataset_repository,
                    std::shared_ptr<RepositoryRepository> repository_repository);
   ~NamespaceService();
 
@@ -77,6 +79,7 @@ class NamespaceService {
   // This is a shared ptr instead of a unique ptr because other services may
   // also need access to the Namespace repository.
   std::shared_ptr<NamespaceRepository> repository_;
+  std::shared_ptr<DatasetRepository> dataset_repository_;
   std::shared_ptr<RepositoryRepository> repository_repository_;
 };
 

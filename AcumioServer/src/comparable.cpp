@@ -1,5 +1,5 @@
 //============================================================================
-// Name        : comparable.cc
+// Name        : comparable.cpp
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
 // Copyright   : Copyright 2016

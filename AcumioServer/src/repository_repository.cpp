@@ -38,7 +38,7 @@ class RepositoryNamespaceExtractor : public _RepositoryExtractor {
   RepositoryNamespaceExtractor() : _RepositoryExtractor() {}
   ~RepositoryNamespaceExtractor() {}
   inline std::unique_ptr<Comparable> GetKey(
-    const model::Repository& repository) const {
+      const model::Repository& repository) const {
     std::unique_ptr<Comparable> key(
         new StringComparable(repository.name().name_space()));
     return key;

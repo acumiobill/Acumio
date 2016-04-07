@@ -13,13 +13,25 @@
 #include <dataset.pb.h>
 #include <description.pb.h>
 
+#include "dataset_repository.h"
 #include "encrypter.h"
+#include "namespace_repository.h"
 
 namespace acumio {
 
 class DatasetService {
  public:
-  DatasetService();
+  typedef google::protobuf::RepeatedPtrField<model::QualifiedName>
+      _RepeatedQualifiedName;
+  typedef google::protobuf::RepeatedPtrField<std::string> _RepeatedString;
+  typedef google::protobuf::RepeatedPtrField<model::Dataset> _RepeatedDataset;
+  typedef google::protobuf::RepeatedPtrField<model::MultiDescription>
+      _RepeatedMultiDescription;
+  typedef google::protobuf::RepeatedPtrField<model::MultiDescriptionHistory>
+      _RepeatedMultiDescriptionHistory;
+
+  DatasetService(std::shared_ptr<DatasetRepository> repository,
+                 std::shared_ptr<NamespaceRepository> namespace_repository);
   ~DatasetService();
 
   grpc::Status CreateDataset(const model::Dataset& dataset,
@@ -27,8 +39,13 @@ class DatasetService {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
-  grpc::Status GetDataset(const model::server::GetDatasetRequest* request,
-                          model::server::GetDatasetResponse* response) {
+  grpc::Status GetDataset(
+      const _RepeatedQualifiedName& physical_name,
+      const _RepeatedString& description_tags,
+      const _RepeatedString& history_tags,
+      _RepeatedDataset* dataset,
+      _RepeatedMultiDescription* description,
+      _RepeatedMultiDescriptionHistory*  description_history) {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
@@ -48,19 +65,23 @@ class DatasetService {
   }
 
   grpc::Status UpdateDatasetWithDescription(
-      const model::server::UpdateDatasetWithDescriptionRequest* request) {
+      const model::QualifiedName& name,
+      const model::Dataset& update,
+      const model::MultiDescriptionMutationChain description_update) {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
-  grpc::Status UpsertDatasetDescription(
-      const model::server::UpsertDatasetDescriptionRequest* request)  {
+  grpc::Status UpdateDatasetDescription(
+      const model::QualifiedName& name,
+      const model::MultiDescriptionMutationChain description_update) {
     return grpc::Status(grpc::StatusCode::UNIMPLEMENTED, "not yet available");
   }
 
  private:
 
   // Underlying Dataset storage.
-  // DatasetRepository repository_;
+  std::shared_ptr<DatasetRepository> repository_;
+  std::shared_ptr<NamespaceRepository> namespace_repository_;
 };
 } // namespace acumio
 

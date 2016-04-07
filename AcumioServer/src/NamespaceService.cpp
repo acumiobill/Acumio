@@ -66,8 +66,10 @@ bool ValidateSeparator(const model::Namespace& name_space) {
 
 NamespaceService::NamespaceService(
     std::shared_ptr<NamespaceRepository> repository,
+    std::shared_ptr<DatasetRepository> dataset_repository,
     std::shared_ptr<RepositoryRepository> repository_repository) :
-    repository_(repository), repository_repository_(repository_repository) {}
+    repository_(repository), dataset_repository_(dataset_repository),
+    repository_repository_(repository_repository) {}
 
 NamespaceService::~NamespaceService() {}
 
@@ -369,4 +371,3 @@ grpc::Status NamespaceService::ValidateNamespaceUpdate(
 }
 
 } // namespace acumio
-

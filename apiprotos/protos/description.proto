@@ -49,3 +49,72 @@ message MultiDescription {
 message MultiDescriptionHistory {
   map<string, DescriptionHistory> history = 1;
 }
+
+message FromToPair {
+  string from_name = 1;
+  string to_name = 2;
+}
+
+message TaggedDescription {
+  string tag = 1;
+  string description = 2;
+}
+
+// This represents a single modification to a MultiDescription.
+message MultiDescriptionMutation {
+
+  oneof operation {
+    // The string represents the name of a tag. If clear is set to "*",
+    // the intent is that all attributes should be cleared.
+    string clear = 1;
+    // The string represents the name of a tag. If remove is set to "*",
+    // the intent is that all attributes should be removed.
+    string remove = 2;
+    // The attribute is renamed from from_name to to_name. This is ignored
+    // there is no attribute called from_name.
+    FromToPair rename = 3;
+    // The upsert.tag description is upserted with upsert.description.
+    TaggedDescription upsert = 4;
+  }
+  Description.SourceCategory knowledge_source_category = 5;
+  string knowledge_source = 6;
+}
+
+message MultiDescriptionMutationChain {
+  // The operations are applied in the order of presentation.
+  // In the event that we encounter an error part way through the chain,
+  // we *do not* try to revert the entire operation - instead, we allow
+  // for those operations that succeeded to perform as specified and
+  // merely stop at the failed chain element.
+  // While we may revisit this decision at some point, the idea is that
+  // description mutations are typically fairly easy to fix manually.
+  // However, being able to provide a rollback capability would require
+  // a great deal of extra processing time.
+  repeated MultiDescriptionMutation chain = 1;
+  // This represents the timestamp of these edits, which are considered
+  // to all occur in a transactional operation - hence effectively -
+  // at the same time. If not specified, this will be calculated by
+  // the server. If the desired result is to have different timestamps
+  // applied in the server then the operations should be presented in
+  // different mutation chains. The reason to *not* have this just behave
+  // as a default value - like we do for the knowledge_source_category
+  // and knowledge_source attribute - is because we need to ensure that the
+  // timestamp values are non-decreasing.
+  // This is an annoying check if we have to compare it for each mutation
+  // in the chain.
+  google.protobuf.Timestamp edit_time = 2;
+
+  // We expect that we have the same editor for all operations in the mutation
+  // chain. The editor value is applied to all mutations. If not specified,
+  // it will be evaluated based on the credentials of the user performing
+  // the operation.
+  string editor = 3;
+
+  // This acts as a default value for any of the mutations. If any of the
+  // mutations in the chain do not specify a knowledge_source_category,
+  // this value is used instead.
+  Description.SourceCategory knowledge_source_category = 4;
+  // Similar to knowledge_souurce_category, this acts as a default value
+  // for any of the mutations in the chain.
+  string knowledge_source = 5;
+}

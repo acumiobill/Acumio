@@ -38,8 +38,10 @@ using namespace std;
 #include "NamespaceService.h"
 #include "RepositoryService.h"
 #include "UserService.h"
+#include "dataset_repository.h"
 #include "encrypter.h"
 #include "namespace_repository.h"
+#include "repository_repository.h"
 
 using grpc::ServerContext;
 using grpc::ServerCredentials;
@@ -85,7 +87,13 @@ class ServerImpl final : public Server::Service {
 
   Status GetDataset(ServerContext* context, const GetDatasetRequest* request,
                     GetDatasetResponse* response) override {
-    return dataset_service_->GetDataset(request, response);
+    return dataset_service_->GetDataset(
+        request->physical_name(),
+        request->included_description_tags(),
+        request->included_description_history_tags(),
+        response->mutable_dataset(),
+        response->mutable_description(),
+        response->mutable_description_history());
   }
 
   Status RemoveDataset(ServerContext* context,
@@ -110,14 +118,16 @@ class ServerImpl final : public Server::Service {
       ServerContext* context,
       const UpdateDatasetWithDescriptionRequest* request,
       UpdateDatasetWithDescriptionResponse* response) override {
-    return dataset_service_->UpdateDatasetWithDescription(request);
+    return dataset_service_->UpdateDatasetWithDescription(
+        request->name(),  request->update(), request->description_update());
   }
 
-  Status UpsertDatasetDescription(
+  Status UpdateDatasetDescription(
       ServerContext* context,
-      const UpsertDatasetDescriptionRequest* request,
-      UpsertDatasetDescriptionResponse* response) override {
-    return dataset_service_->UpsertDatasetDescription(request);
+      const UpdateDatasetDescriptionRequest* request,
+      UpdateDatasetDescriptionResponse* response) override {
+    return dataset_service_->UpdateDatasetDescription(
+        request->name(), request->description_update());
   }
 
   // Namespace Services
@@ -303,11 +313,15 @@ void RunServer(std::string address) {
       new NamespaceRepository());
   std::shared_ptr<acumio::RepositoryRepository> repository_repository(
       new acumio::RepositoryRepository());
+  std::shared_ptr<acumio::DatasetRepository> dataset_repository(
+      new acumio::DatasetRepository());
   std::unique_ptr<acumio::NamespaceService> namespace_service(
-      new NamespaceService(namespace_repository, repository_repository));
+      new NamespaceService(namespace_repository, dataset_repository,
+                           repository_repository));
   std::unique_ptr<acumio::RepositoryService> repository_service(
       new RepositoryService(repository_repository, namespace_repository));
-  std::unique_ptr<acumio::DatasetService> dataset_service(new DatasetService());
+  std::unique_ptr<acumio::DatasetService> dataset_service(
+      new DatasetService(dataset_repository, namespace_repository));
   ServerImpl service(std::move(dataset_service), std::move(namespace_service),
                      std::move(repository_service), std::move(user_service));
   grpc::ServerBuilder builder;

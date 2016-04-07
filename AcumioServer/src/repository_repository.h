@@ -48,6 +48,9 @@ class RepositoryRepository {
   RepositoryRepository();
   ~RepositoryRepository();
 
+  // TODO: Evaluate if we need both AddWithDescription and AddWithNoDescription.
+  //       I suspect that we only need a single one, and it always has the
+  //       description present.
   inline grpc::Status AddWithDescription(const model::Repository& repository,
                                          const model::Description& desc) {
     return repository_->AddWithDescription(repository, desc);

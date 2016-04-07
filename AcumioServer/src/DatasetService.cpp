@@ -9,6 +9,9 @@
 #include "DatasetService.h"
 
 namespace acumio {
-DatasetService::DatasetService() {}
+DatasetService::DatasetService(
+    std::shared_ptr<DatasetRepository> repository,
+    std::shared_ptr<NamespaceRepository> namespace_repository) :
+    repository_(repository), namespace_repository_(namespace_repository) {}
 DatasetService::~DatasetService() {}
 } // namespace acumio

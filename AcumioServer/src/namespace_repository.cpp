@@ -1,5 +1,5 @@
 //============================================================================
-// Name        : namespace_repository.cc
+// Name        : namespace_repository.cpp
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
 // Copyright   : Copyright 2016

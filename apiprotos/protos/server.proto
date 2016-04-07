@@ -37,8 +37,10 @@ message GetDatasetRequest {
   // datasets simultaneously.
   repeated acumio.model.QualifiedName physical_name = 1;
 
-  bool include_descriptions = 2;
-  bool include_description_histories = 3;
+  // If the included_description_tags has the tag "*" as the first element,
+  // we get all tags. Similar for included_description_history_tags.
+  repeated string included_description_tags = 2;
+  repeated string included_description_history_tags = 3;
 }
 
 message GetDatasetResponse {
@@ -113,36 +115,20 @@ message UpdateDatasetWithDescriptionRequest {
   // Fully qualified name of the Dataset.
   acumio.model.QualifiedName name = 1;
   acumio.model.Dataset update = 2;
-  acumio.model.MultiDescription updated_description = 3;
-  bool clear_description = 4;
-  repeated string clear_attribute_description = 5;
+  MultiDescriptionMutationChain description_update = 3;
 }
 
 message UpdateDatasetWithDescriptionResponse {
   // Intentionally Empty.
 }
 
-message UpsertDatasetDescriptionRequest {
+message UpdateDatasetDescriptionRequest {
   // Which Dataset is getting its description updated.
-  acumio.model.QualifiedName described = 1;
-
-  // Important: Only those parts of the description that are non-empty
-  // are modified. A blank string here is ignored. If the desire is to
-  // clear out a particular part of the description, use the
-  // clear_dataset_description and/or the clear_attribute_description
-  // attributes.
-  acumio.model.MultiDescription update = 2;
-
-  // If set, we ignore the update.description.contents attribute and set it to
-  // an empty string.
-  bool clear_dataset_description = 3;
-  // For each listed attribute here, we set the associated description to an
-  // empty string. The strings are the keys to the map that would be part of
-  // the MultiDescription.attribute_description attribute.
-  repeated string clear_attribute_description = 4;
+  acumio.model.QualifiedName name = 1;
+  MultiDescriptionMutationChain description_update = 2;
 }
 
-message UpsertDatasetDescriptionResponse {
+message UpdateDatasetDescriptionResponse {
   // Intentionally Empty.
 }
 
@@ -498,8 +484,8 @@ service Server {
   rpc UpdateDataset(UpdateDatasetRequest) returns (UpdateDatasetResponse) {}
   rpc UpdateDatasetWithDescription(UpdateDatasetWithDescriptionRequest)
       returns (UpdateDatasetWithDescriptionResponse) {}
-  rpc UpsertDatasetDescription(UpsertDatasetDescriptionRequest) returns
-      (UpsertDatasetDescriptionResponse) {}
+  rpc UpdateDatasetDescription(UpdateDatasetDescriptionRequest) returns
+      (UpdateDatasetDescriptionResponse) {}
 // Namespace APIs
   rpc CreateNamespace(CreateNamespaceRequest) returns
       (CreateNamespaceResponse) {}
