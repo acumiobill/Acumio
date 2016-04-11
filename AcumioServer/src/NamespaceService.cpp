@@ -65,11 +65,9 @@ bool ValidateSeparator(const model::Namespace& name_space) {
 } // anonymous namespace
 
 NamespaceService::NamespaceService(
-    std::shared_ptr<NamespaceRepository> repository,
-    std::shared_ptr<DatasetRepository> dataset_repository,
-    std::shared_ptr<RepositoryRepository> repository_repository) :
-    repository_(repository), dataset_repository_(dataset_repository),
-    repository_repository_(repository_repository) {}
+    NamespaceRepository* repository,
+    ReferentialService* referential_service) :
+    repository_(repository), referential_service_(referential_service) {}
 
 NamespaceService::~NamespaceService() {}
 
@@ -223,87 +221,6 @@ grpc::Status NamespaceService::ValidateNewNamespace(
   return grpc::Status::OK;
 }
 
-grpc::Status NamespaceService::ValidateNamespacePlusSeparatorRemoval(
-    const model::Namespace& name_space) {
-  std::string namespace_plus_separator =
-      name_space.full_name() + name_space.separator();
-  // We wish to see if we find something that is constructed as the provided
-  // namespace_name plus the separator. If there is such a Namespace, the
-  // first one will be the first element *after* the LowerBound result
-  // of searching by full_name. By presumption, based on how we got here,
-  // the resulting iterator will not be repository_->end() because, we should
-  // have at least by now, verified that the given name_space exists.
-  NamespaceRepository::PrimaryIterator it =
-      repository_->LowerBoundByFullName(namespace_plus_separator);
-  it++;
-
-  if (it != repository_->primary_end() &&
-      (*it).second.entity.name().name_space() == name_space.full_name()) {
-    std::stringstream error;
-    error << "Unable to delete Namespace with name (\""
-          << name_space.full_name()
-          << "\") since it contains a sub-Namespace with name (\""
-          << it->second.entity.full_name()
-          << "\").";
-    return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, error.str());
-  }
-
-  // We just validated for removal based on Namespaces, but now, we need to
-  // check for Repositories.
-  RepositoryRepository::PrimaryIterator repository_iter =
-      repository_repository_->LowerBoundByFullName(name_space.name());
-  if (repository_iter != repository_repository_->primary_end()) {
-    const model::Repository& found = repository_iter->second.entity;
-    if (found.name().name_space() == name_space.name().name_space() &&
-        found.name().name() == name_space.name().name()) {
-      std::stringstream error;
-      error << "Unable to delete Namespace with name (\""
-            << name_space.full_name()
-            << "\"). There is a corresponding Repository with that same name, "
-            << "and that must be removed first.";
-      return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, error.str());
-    }
-  }
-
-  RepositoryRepository::SecondaryIterator repository_namespace_iter =
-      repository_repository_->LowerBoundByNamespace(name_space.full_name());
-  if (repository_namespace_iter !=
-      repository_repository_->namespace_iter_end()) {
-    const model::Repository& found = repository_namespace_iter->second.entity;
-    if (found.name().name_space() == name_space.full_name()) {
-      std::stringstream error;
-      error << "Unable to delete Namespace with name (\""
-            << name_space.full_name()
-            << "\"). There is a corresponding Repository with name (\""
-            << found.name().name()
-            << "\") that resides in that namespace.";
-      return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, error.str());
-    }
-  }
-
-  // Finally, after validation for namespaces and repositories, we need to
-  // check for daatasets.
-  // TODO: Consider pulling this into a different method. This method
-  // looks rather lengthy. Each of the 3 checks can be separated.
-  DatasetRepository::SecondaryIterator dataset_namespace_iter =
-      dataset_repository_->LowerBoundByNamespace(name_space.full_name());
-  if (dataset_namespace_iter !=
-      dataset_repository_->namespace_iter_end()) {
-    const model::Dataset& found = dataset_namespace_iter->second.entity;
-    if (found.physical_name().name_space() == name_space.full_name()) {
-      std::stringstream error;
-      error << "Unable to delete Namespace with name (\""
-            << name_space.full_name()
-            << "\"). There is a corresponding Dataset with name (\""
-            << found.physical_name().name()
-            << "\") that resides in that namespace.";
-      return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, error.str());
-    }
-  }
-
-  return grpc::Status::OK;
-}
-
 grpc::Status NamespaceService::ValidateNamespaceRemoval(
     const std::string& namespace_name) {
   NamespaceRepository::PrimaryIterator it =
@@ -323,7 +240,15 @@ grpc::Status NamespaceService::ValidateNamespaceRemoval(
     return grpc::Status(grpc::StatusCode::NOT_FOUND, error.str());
   }
 
-  return ValidateNamespacePlusSeparatorRemoval(it->second.entity);
+  if (referential_service_->IsNamespaceEmpty(it->second.entity)) {
+    return grpc::Status::OK;
+  }
+
+  std::stringstream error;
+  error << "Unable to delete Namespace with name (\""
+        << namespace_name
+        << "\") since it contains elements within it.";
+  return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, error.str());
 }
 
 grpc::Status NamespaceService::ValidateNamespaceUpdate(
@@ -387,7 +312,14 @@ grpc::Status NamespaceService::ValidateNamespaceUpdate(
     return grpc::Status::OK;
   }
 
-  return ValidateNamespacePlusSeparatorRemoval(it->second.entity);
+  if (referential_service_->IsNamespaceEmpty(it->second.entity)) {
+    return grpc::Status::OK;
+  }
+  std::stringstream error;
+  error << "Unable to rename Namespace (\""
+        << namespace_name
+        << "\") since it is not empty.";
+  return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION, error.str());
 }
 
 } // namespace acumio

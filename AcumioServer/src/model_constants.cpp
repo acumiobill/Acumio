@@ -3,15 +3,17 @@
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
 // Copyright   : Copyright 2016
-// Description : An implementation of the Comparable virtual class for
-//               comparing acumio::model::QualifiedName instances.
+// Description : Definitions of important constants.
 //============================================================================
 
 
 #include "model_constants.h"
 namespace acumio {
 namespace model {
+const char* const DATASET = "dataset";
 const char* const DEFAULT_NAMESPACE_SEPARATOR = "/";
+const char* const NAMESPACE = "namespace";
+const char* const REPOSITORY = "repository";
 const char* const WILDCARD = "*";
 } // namespace model
 } // namespace acumio

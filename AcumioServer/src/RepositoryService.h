@@ -11,15 +11,16 @@
 #include <grpc++/grpc++.h>
 #include <server.pb.h>
 #include <repository.pb.h>
-#include "namespace_repository.h"
+#include "referential_service.h"
 #include "repository_repository.h"
 
 namespace acumio {
 
 class RepositoryService {
  public:
-  RepositoryService(std::shared_ptr<RepositoryRepository> repository,
-                    std::shared_ptr<NamespaceRepository> namespace_repository);
+  // Caller "owns" the pointers.
+  RepositoryService(RepositoryRepository* repository,
+                    ReferentialService* referential_service);
   ~RepositoryService();
 
   grpc::Status CreateRepository(const model::Repository& repository,
@@ -59,39 +60,16 @@ class RepositoryService {
       bool clear_description);
 
  private:
-  grpc::Status AssociateNamespace(const model::Namespace& found_namespace,
-                                  const model::Description& found_description,
-                                  const model::Description& update_description,
-                                  const std::string& desired_separator);
-
-  grpc::Status CreateAssociatedNamespace(const std::string& full_name,
-                                         const std::string& parent_full_name,
-                                         const std::string& name,
-                                         const std::string& separator,
-                                         const model::Description& desc);
-
-  grpc::Status CreateOrAssociateNamespace(const model::Namespace& parent,
-                                          const std::string& name,
-                                          const std::string& separator,
-                                          const model::Description& desc);
-
   // Used internally when we have a GetRepository with the request to just
   // get the Repository without the Descriptions.
   grpc::Status GetJustRepository(
       const model::QualifiedName& repository_name,
       model::server::GetRepositoryResponse* response);
 
-  grpc::Status GetParentNamespace(const model::QualifiedName& repository_name,
-                                  model::Namespace* parent) const;
-
-  // Checks to see if provided Namespace has any elements in it:
-  // either Namespaces, or Repositories (or later, TODO: Datasets).
-  // TODO: Create a unified InternalNamespaceService class for providing
-  // common code between NamespaceService and RepositoryService. This
-  // is otherwise copying quite a bit of code.
-  grpc::Status IsNamespaceEmpty(const model::Namespace& name_space,
-                                bool* result) const;
-
+  // Returned Iterator guaranteed to be first Repository r such that
+  // start_after_name < r.name(). Similar to the idea of LowerBound,
+  // but LowerBound returns first element r such that after_name <= r.name().
+  // This is used in conjuntion with the List API.
   RepositoryRepository::PrimaryIterator IteratorStart(
     const model::QualifiedName& start_after_name) const;
 
@@ -105,7 +83,13 @@ class RepositoryService {
       uint32_t list_max,
       model::server::ListRepositoriesResponse* response) const;
 
-  grpc::Status ValidateNewRepository(const model::Repository& repository) const;
+  grpc::Status RemoveRepositoryWithForce(
+      const model::QualifiedName& repository_name,
+      model::Namespace& name_space,
+      bool remove_or_disassociate_namespace);
+
+  grpc::Status ValidateWellFormedRepository(
+      const model::Repository& repository) const;
 
   // Returns OK status if the Namespace with the same name as repository_name
   // exists, and is associated with a repository.
@@ -113,8 +97,8 @@ class RepositoryService {
       const model::Namespace& parent,
       const model::QualifiedName& repository_name) const;
 
-  std::shared_ptr<RepositoryRepository> repository_;
-  std::shared_ptr<NamespaceRepository> namespace_repository_;
+  RepositoryRepository* repository_;
+  ReferentialService* referential_service_;
 };
 
 } // namespace acumio

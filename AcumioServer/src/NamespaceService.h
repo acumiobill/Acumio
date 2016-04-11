@@ -13,15 +13,16 @@
 #include <names.pb.h>
 #include "dataset_repository.h"
 #include "namespace_repository.h"
+#include "referential_service.h"
 #include "repository_repository.h"
 
 namespace acumio {
 
 class NamespaceService {
  public:
-  NamespaceService(std::shared_ptr<NamespaceRepository> repository,
-                   std::shared_ptr<DatasetRepository> dataset_repository,
-                   std::shared_ptr<RepositoryRepository> repository_repository);
+  // client retains ownership of pointers.
+  NamespaceService(NamespaceRepository* repository,
+                   ReferentialService* referential_service);
   ~NamespaceService();
 
   grpc::Status CreateNamespace(const model::Namespace& name_space,
@@ -58,8 +59,6 @@ class NamespaceService {
   // key violation checking.
   grpc::Status ValidateNewNamespace(const model::Namespace& name_space);
 
-  grpc::Status ValidateNamespacePlusSeparatorRemoval(
-      const model::Namespace& name_space);
   // Verifies that removing the Namespace with the given name would not
   // generate Orphan entities.
   // TODO: Currently, this only supports Namespace and Repository orphans.
@@ -76,11 +75,10 @@ class NamespaceService {
   grpc::Status ValidateNamespaceUpdate(const std::string& namespace_name,
                                        const model::Namespace& update);
 
-  // This is a shared ptr instead of a unique ptr because other services may
-  // also need access to the Namespace repository.
-  std::shared_ptr<NamespaceRepository> repository_;
-  std::shared_ptr<DatasetRepository> dataset_repository_;
-  std::shared_ptr<RepositoryRepository> repository_repository_;
+  // These are not "owned" by the NamespaceService; instead, they are owned
+  // by the client class that invoked the constructor.
+  NamespaceRepository* repository_;
+  ReferentialService* referential_service_;
 };
 
 } // namespace acumio

@@ -15,7 +15,7 @@
 
 #include "dataset_repository.h"
 #include "encrypter.h"
-#include "namespace_repository.h"
+#include "referential_service.h"
 
 namespace acumio {
 
@@ -30,8 +30,8 @@ class DatasetService {
   typedef google::protobuf::RepeatedPtrField<model::MultiDescriptionHistory>
       _RepeatedMultiDescriptionHistory;
 
-  DatasetService(std::shared_ptr<DatasetRepository> repository,
-                 std::shared_ptr<NamespaceRepository> namespace_repository);
+  DatasetService(DatasetRepository* repository,
+                 ReferentialService* referential_service);
   ~DatasetService();
 
   grpc::Status CreateDataset(const model::Dataset& dataset,
@@ -66,10 +66,11 @@ class DatasetService {
       const model::MultiDescriptionMutationChain& description_update);
 
  private:
-
-  // Underlying Dataset storage.
-  std::shared_ptr<DatasetRepository> repository_;
-  std::shared_ptr<NamespaceRepository> namespace_repository_;
+  // Underlying Dataset storage. Memory storage of pointers owned by client.
+  DatasetRepository* repository_;
+  // Service for performing referential-integrity checks.
+  ReferentialService* referential_service_;
+  // Utility class for generating "Mutations".
   MultiMutationFactory mutation_factory_;
 };
 } // namespace acumio

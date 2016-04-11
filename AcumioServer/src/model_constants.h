@@ -11,7 +11,10 @@
 
 namespace acumio {
 namespace model {
+extern const char* const DATASET;
 extern const char* const DEFAULT_NAMESPACE_SEPARATOR;
+extern const char* const NAMESPACE;
+extern const char* const REPOSITORY;
 extern const char* const WILDCARD;
 } // namespace model
 } // namespace acumio

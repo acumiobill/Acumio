@@ -10,22 +10,26 @@
 #include "dataset.pb.h"
 #include "dataset_repository.h"
 #include "description.pb.h"
-#include "namespace_repository.h"
 #include "protobuf_iterator.h"
+#include "referential_service.h"
 
 namespace acumio {
 DatasetService::DatasetService(
-    std::shared_ptr<DatasetRepository> repository,
-    std::shared_ptr<NamespaceRepository> namespace_repository) :
-    repository_(repository), namespace_repository_(namespace_repository),
+    DatasetRepository* repository,
+    ReferentialService* referential_service) :
+    repository_(repository), referential_service_(referential_service),
     mutation_factory_() {}
 DatasetService::~DatasetService() {}
 
 grpc::Status DatasetService::CreateDataset(
     const model::Dataset& dataset,
     const model::MultiDescription& description) {
-  // TODO: Validate that there already exists the Namespace for the Dataset
-  // being created.
+  model::Namespace parent;
+  grpc::Status check = referential_service_->GetParentNamespace(
+      dataset.physical_name(), model::DATASET, &parent);
+  if (!check.ok()) {
+    return check;
+  }
   return repository_->Add(dataset, description);
 }
 
@@ -72,8 +76,16 @@ grpc::Status DatasetService::RemoveDataset(const model::QualifiedName& name) {
 
 grpc::Status DatasetService::UpdateDataset(const model::QualifiedName& name,
                                            const model::Dataset& dataset) {
-  // TODO: Validate that if the parent namespace for the dataset is changing,
-  //       then the new parent namespace exists.
+  // Validate that if the parent namespace for the dataset is changing,
+  // then the new parent namespace exists.
+  if (name.name_space() != dataset.physical_name().name_space()) {
+    model::Namespace parent;
+    grpc::Status check = referential_service_->GetParentNamespace(
+        name, model::DATASET, &parent);
+    if (!check.ok()) {
+      return check;
+    }
+  }
   return repository_->UpdateDataset(name, dataset);
 }
 
@@ -81,8 +93,16 @@ grpc::Status DatasetService::UpdateDatasetWithDescription(
     const model::QualifiedName& name,
     const model::Dataset& dataset,
     const model::MultiDescriptionMutationChain& description_update) {
-  // TODO: Validate that if the parent namespace for the dataset is changing,
-  //       then the new parent namespace exists.
+  // Validate that if the parent namespace for the dataset is changing,
+  // then the new parent namespace exists.
+  if (name.name_space() != dataset.physical_name().name_space()) {
+    model::Namespace parent;
+    grpc::Status check = referential_service_->GetParentNamespace(
+        name, model::DATASET, &parent);
+    if (!check.ok()) {
+      return check;
+    }
+  }
   std::unique_ptr<MultiMutationInterface> updates =
       mutation_factory_.build(description_update);
   return repository_->UpdateDatasetWithDescription(name, dataset,

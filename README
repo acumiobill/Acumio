@@ -76,16 +76,6 @@ If all goes well, you should be able to first start the AcumioServer.exe
 by invoking it directly, then invoke the AcumioCommandLine.exe.
 
 TODO (In rough priority order):
-	* Complete Basic API definitions and implementations.
-		This is nearly done for the Basic APIs, but the search
-		style APIs will require extra thought. The Basic APIs
-		will allow for safe crud-operations and retrieval,
-		but not search. Currently, this is complete for
-		User and Namespace and most complete for Repository, but not
-		for Dataset. For Repository, the validation checks (i.e.,
-		foreign-key type checks) still need to be completed.
-		SubTasks:
-			* Add data validations to prevent corruption.
 	* Fix Acumio and Open-Source Copyright information.
 		Need to check legal requirements for including open-source
 		usage information. We are currently using:
@@ -97,12 +87,6 @@ TODO (In rough priority order):
 		so far, but it will eventually get buried under its own
 		weight without tests. (Probably use boost test libraries
 		for this).
-	* Fix some "Code Smells"
-		Relation between Repository and Namespace is a bit strained.
-		Either try to find a simpler model, or just clean up the
-		code. Currently, the RepositoryService has some long
-		methods (over 100 lines of code) and it could share some
-		code with the NamespaceService.
 	* Make Thread Safe
 		The underlying MemRepository class
 		(AcumioServer/src/mem_repository.h)
@@ -133,6 +117,12 @@ TODO (In rough priority order):
 		different requirements than the other content: we
 		will eventually *not* want to keep this in-memory except
 		for a memory-limited LRU Cache.
+	* Fix some "Code Smells"
+                This is just code cleanup.  Sub-tasks:
+                   * Fix methods that exceed 40~50 lines.
+                   * Make variable and method names consistent across classes.
+                     (Some of this might happen in the course of operations
+                      listed above).
 	* Integrate with Web Front End
 		Targeting the use of Angular2 with Node.js/javascript.
 	* Add Retrievable and queryable Audit logging.

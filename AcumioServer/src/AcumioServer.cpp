@@ -41,6 +41,7 @@ using namespace std;
 #include "dataset_repository.h"
 #include "encrypter.h"
 #include "namespace_repository.h"
+#include "referential_service.h"
 #include "repository_repository.h"
 
 using grpc::ServerContext;
@@ -54,14 +55,14 @@ namespace model {
 namespace server {
 class ServerImpl final : public Server::Service {
  public:
-  ServerImpl(std::unique_ptr<acumio::DatasetService> dataset_service,
-             std::unique_ptr<acumio::NamespaceService> namespace_service,
-             std::unique_ptr<acumio::RepositoryService> repository_service,
-             std::unique_ptr<acumio::UserService> user_service) :
-     dataset_service_(std::move(dataset_service)),
-     namespace_service_(std::move(namespace_service)),
-     repository_service_(std::move(repository_service)),
-     user_service_(std::move(user_service)) {}
+  ServerImpl(acumio::DatasetService* dataset_service,
+             acumio::NamespaceService* namespace_service,
+             acumio::RepositoryService* repository_service,
+             acumio::UserService* user_service) :
+     dataset_service_(dataset_service),
+     namespace_service_(namespace_service),
+     repository_service_(repository_service),
+     user_service_(user_service) {}
 
   Status ConcatInputs(ServerContext* context, const ConcatInputRequest* request,
                       ConcatInputResponse* response) override {
@@ -274,10 +275,10 @@ class ServerImpl final : public Server::Service {
   }
 
  private:
-  std::unique_ptr<acumio::DatasetService> dataset_service_;
-  std::unique_ptr<acumio::NamespaceService> namespace_service_;
-  std::unique_ptr<acumio::RepositoryService> repository_service_;
-  std::unique_ptr<acumio::UserService> user_service_;
+  acumio::DatasetService* dataset_service_;
+  acumio::NamespaceService* namespace_service_;
+  acumio::RepositoryService* repository_service_;
+  acumio::UserService* user_service_;
 };
 /*
   Bring this back when we are ready to work with ssl communication.
@@ -307,23 +308,20 @@ void RunServer(std::string address) {
   uint64_t salt_seed = 1;
   std::unique_ptr<acumio::crypto::SaltGeneratorInterface> salter(
     new acumio::crypto::DeterministicSaltGenerator(salt_seed));
-  std::unique_ptr<acumio::UserService> user_service(
-      new UserService(std::move(encrypter), std::move(salter)));
-  std::shared_ptr<acumio::NamespaceRepository> namespace_repository(
-      new NamespaceRepository());
-  std::shared_ptr<acumio::RepositoryRepository> repository_repository(
-      new acumio::RepositoryRepository());
-  std::shared_ptr<acumio::DatasetRepository> dataset_repository(
-      new acumio::DatasetRepository());
-  std::unique_ptr<acumio::NamespaceService> namespace_service(
-      new NamespaceService(namespace_repository, dataset_repository,
-                           repository_repository));
-  std::unique_ptr<acumio::RepositoryService> repository_service(
-      new RepositoryService(repository_repository, namespace_repository));
-  std::unique_ptr<acumio::DatasetService> dataset_service(
-      new DatasetService(dataset_repository, namespace_repository));
-  ServerImpl service(std::move(dataset_service), std::move(namespace_service),
-                     std::move(repository_service), std::move(user_service));
+  UserService user_service(std::move(encrypter), std::move(salter));
+  NamespaceRepository namespace_repository;
+  RepositoryRepository repository_repository;
+  DatasetRepository dataset_repository;
+  ReferentialService referential_service(&namespace_repository,
+                                         &dataset_repository,
+                                         &repository_repository);
+  NamespaceService namespace_service(&namespace_repository,
+                                     &referential_service);
+  RepositoryService repository_service(&repository_repository,
+                                       &referential_service);
+  DatasetService dataset_service(&dataset_repository, &referential_service);
+  ServerImpl service(&dataset_service, &namespace_service,
+                     &repository_service, &user_service);
   grpc::ServerBuilder builder;
   /**
    This code assumes ssl connection.
