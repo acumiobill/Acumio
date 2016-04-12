@@ -2,7 +2,7 @@
 // Name        : AcumioCommandLine.cpp
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2006
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Command-Line client to Acumio Server.
 //============================================================================
 

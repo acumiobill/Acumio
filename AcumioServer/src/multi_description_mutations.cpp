@@ -2,7 +2,7 @@
 // Name        : multi_description_mutations.cpp
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Provides implementations for classes from
 //               multi_description_mutations.h as well as some hidden
 //               helper classes to make the implementation complete.

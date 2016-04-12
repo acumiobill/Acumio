@@ -2,7 +2,7 @@
 // Name        : AcumioClient.cpp
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2006
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Client-side libraries to connect to AcumioServer.
 //============================================================================
 

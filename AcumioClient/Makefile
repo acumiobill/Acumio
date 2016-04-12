@@ -1,3 +1,7 @@
+# Author: Bill Province (bill@acumio.com)
+# Copyright (C) 2016 Acumio
+# This Makefile builds AcumioCommandLineClient.exe. You can invoke
+# AcumioCommandLineClient.exe from runclient.sh in this same directory.
 CXX = g++
 CPPFLAGS += -I/usr/local/include -pthread
 # Non-Debug Version.

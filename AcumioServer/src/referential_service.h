@@ -4,7 +4,7 @@
 // Name        : referential_service.cpp
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Shared services for performing referential validity checks.
 //============================================================================
 

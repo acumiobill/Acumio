@@ -76,12 +76,6 @@ If all goes well, you should be able to first start the AcumioServer.exe
 by invoking it directly, then invoke the AcumioCommandLine.exe.
 
 TODO (In rough priority order):
-	* Fix Acumio and Open-Source Copyright information.
-		Need to check legal requirements for including open-source
-		usage information. We are currently using:
-		* Google's protobuf
-		* Google's grpc
-		* Boost libraries
 	* Unit Tests!!
 		This is sorely lacking. The project has been pretty small
 		so far, but it will eventually get buried under its own
@@ -99,6 +93,9 @@ TODO (In rough priority order):
 		and look for improvements. The performance improvements
 		are lower priority -- probably around the priority of
 		adding Lineage and Event APIs.
+	* Integrate with Apache Atlas.
+		Need details on what the certification requirements are
+		for this.
 	* Complete Search APIs.
 		This will require some work beyond the "basic" APIs,
 		and requires some research on how best to do this.
@@ -108,9 +105,6 @@ TODO (In rough priority order):
 		thread-safety will be required before we can complete
 		search APIs because indexing should be performed
 		asynchronously.
-	* Integrate with Apache Atlas.
-		Need details on what the certification requirements are
-		for this.
 	* Add Lineage and Event APIs.
 		Yes. Of course, we need these. Initially, we will just
 		keep this content in-memory, however, this content has
@@ -150,6 +144,13 @@ TODO (In rough priority order):
 		is about generating messages for the purposes of debugging
 		our server. Need to select a decent logger for this (probably
 		use boost libraries).
+	* Fix Open-Source Copyright information.
+		Need to check legal requirements for including open-source
+		usage information. Looking so far, since the Google libraries
+                would only be distributed in binary format, we do not need
+                to modify any Copyright information in our files; only we
+                will need to include Google's BSD-3 Copyright notice in
+                any manuals or publications.
 	* Add I18n Support.
 		Really low on priority, but at some point, we should address
 		this.

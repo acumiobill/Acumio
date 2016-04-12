@@ -2,7 +2,7 @@
 // Name        : UserService.cpp
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Service for User operations. At the moment, this does not
 //               include any form of Authentication or Authorization. All
 //               operations are available to all users, and all entities

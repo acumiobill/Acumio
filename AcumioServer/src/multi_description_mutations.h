@@ -4,7 +4,7 @@
 // Name        : multi_description_mutations.h
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Provides classes for describing requested mutations to a
 //               MultiDescriptionHistory. This is similar to the
 //               acumio::mem_repository::ElementMutatorInterface and its

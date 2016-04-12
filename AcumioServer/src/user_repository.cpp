@@ -2,7 +2,7 @@
 // Name        : user_repository.cc
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Provides multi-threaded access to an in-memory
 //               repository.
 //============================================================================

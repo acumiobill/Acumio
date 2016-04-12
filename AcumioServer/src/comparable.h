@@ -4,7 +4,7 @@
 // Name        : comparable.h
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : A virtual class similar to Java's "Comparable" interface.
 //
 //               This class introduces some potentially annoying "features"

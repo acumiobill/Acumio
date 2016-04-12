@@ -4,7 +4,7 @@
 // Name        : pointer_less.h
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : A less-than operator that works on pointers to objects
 //               rather than on the objects themselves. For nullptr arguments,
 //               a nullptr is consider less than any other non-nullptr,

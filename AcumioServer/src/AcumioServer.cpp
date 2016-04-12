@@ -2,7 +2,7 @@
 // Name        : AcumioServer.cpp
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Server implementation with grpc.
 //               This class has the "main" function as well as being
 //               responsible for building the server. The server

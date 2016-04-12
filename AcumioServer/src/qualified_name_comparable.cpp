@@ -2,7 +2,7 @@
 // Name        : qualified_name_comparable.cpp
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : An implementation of the Comparable virtual class for
 //               comparing acumio::model::QualifiedName instances.
 //============================================================================

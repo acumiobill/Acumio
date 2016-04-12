@@ -4,7 +4,7 @@
 // Name        : multi_mutation_context.h
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : A struct-like class for providing needed context for updates
 //               to MultiDescriptions. When performing updates to
 //               MultiDescriptions, our APIs are such that we get chains of

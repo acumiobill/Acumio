@@ -4,7 +4,7 @@
 // Name        : encrypter.h
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Provides Functor objects for doing encryption (not decryption)
 //               and salt generation.
 //               At the moment, only a truly brain-dead and insecure encryption

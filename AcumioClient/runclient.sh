@@ -1,4 +1,8 @@
 #!/bin/sh
+#
+# Author: Bill Province (bill@acumio.com)
+# Copyright 2016 Acumio
+#
 # This is helpful if you just want to connect to a server on your local
 # machine. Helpful for development, but not really useful in a real
 # deployment.

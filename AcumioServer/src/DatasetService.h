@@ -4,7 +4,7 @@
 // Name        : DatasetService.h
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
-// Copyright   : Copyright 2016
+// Copyright   : Copyright (C) 2016 Acumio
 // Description : Service for Dataset operations. Skeleton at the moment.
 //============================================================================
 

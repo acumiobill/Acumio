@@ -1,3 +1,8 @@
+# Author: Bill Province
+# Copyright (C) 2016 Acumio
+# Makefile for building AcumioServer.exe. The generated executable can be
+# run using startserver.sh in the same directory as this Makefile.
+
 CXX = g++
 CPPFLAGS += -I/usr/local/include -pthread
 # The below is for the non-debug version.
