@@ -1,3 +1,4 @@
-# Ignore generated .o  and .exe files.
+# Ignore generated .d, .o and .exe files.
+*.d
 *.o
 *.exe

@@ -19,6 +19,9 @@ There are a few prerequisites for this process to work:
 		  require JDK 1.8.
 		* Later, we will also need to be able to generate node.js
 		  libraries.
+	* Google's "GoogleTest" libraries
+		* This is a C++ only set of libraries for testing. This
+                  includes both googletest and googlemock.
 	* Boost libraries
 		* Currently, only "boost_program_options" is required, but
 		  it costs relatively little to just install all of them.
@@ -47,10 +50,49 @@ Installation for Google's grpc libraries is found here:
     https://github.com/grpc/grpc/blob/release-0_11/INSTALL.
 Installation instructions for SSL Certificates (assumes Ubuntu machine):
     https://help.ubuntu.com/lts/serverguide/certificates-and-security.html
+Installation instructions for Google's googletest libraries:
+    Step 1:
+     *** Install via git clone the googletest source code.
+     ~$ cd workingdir
+     ~/workingdir$ git clone git://github.com/google/googletest googletest
+      This will create the content:
+        ~/workingdir/googletest/
+                                CMakeLists.txt
+                                googlemock/
+                                     {googlemock content}
+                                googletest/
+                                     {googletest content}
+                                README.md
+                                travis.sh
 
-Assuming these requirements are met, it should then be possible to build
-and deploy both client and server. The overall directory structure will
-look something like this:
+    Step 2:
+     *** Install cmake (if you don't already have it. Installation process
+         may vary based on platform. Instructions below are for Ubuntu Linux).
+     ~/workingdir$ sudo apt-get install cmake
+    Step 3:
+     *** Generate Makefile using cmake:
+     ~/workingdir$ cd ~/workingdir/googletest
+     ~/workingdir/googltest$ cmake CMakeLists.txt
+    Step 4:
+     *** Build googlemock and googletest libraries using generated Makefile.
+     ~/workingdir/googletest$  make
+    Step 5:
+     *** Invoke 'sudo gtest_install.sh' that is now a part of this github
+         repository, and will be at the same directory location as this
+         README file. Note that this was tested without actually using
+         an environment variable ${PATH_TO_DIR_WITH_THIS_README}, rather this
+         was tested with ~/workingdir containing this README file directly.
+         If that is not the case for you - i.e., if the directory where you
+         installed the googletest repository is not the same as the Acumio
+         repository location, just copy gtest_install.sh to your local
+         directory.
+    ~/workingdir/googletest$ cd ..
+    ~/workdingdir$ sudo ${PATH_TO_DIR_WITH_THIS_README}/gtest_install.sh
+       
+
+Assuming these steps have been followed, and all requirements are met, it
+should then be possible to build and deploy both client and server. The
+overall directory structure will look something like this:
 
    apiprotos/
        Makefile
@@ -75,12 +117,30 @@ executable:
 If all goes well, you should be able to first start the AcumioServer.exe
 by invoking it directly, then invoke the AcumioCommandLine.exe.
 
+To build and run tests, in either the AcumioClient or AcumioServer directory,
+build the target "all_tests" (i.e., "make all_tests"). This will generate
+a series of .exe files in the test_objs directory.
+
 TODO (In rough priority order):
 	* Unit Tests!!
-		This is sorely lacking. The project has been pretty small
-		so far, but it will eventually get buried under its own
-		weight without tests. (Probably use boost test libraries
-		for this).
+		Test infrastructure and build process are now in place,
+		but we have only begun developing the actual tests.
+		The tests below are the highest priority. There are some
+		possible additional tests to consider, but for now, we should
+		just focus on these before moving on.
+		Sub Tasks:
+		* Test user_repository.cpp
+		* Test namespace_repository.cpp
+		* Test dataset_repository.cpp
+		* Test repository_repository.cpp
+		* Test referential_service.cpp
+		* Test UserService.cpp
+		* Test NamespaceService.cpp
+		* Test RepositoryService.cpp
+		* Test DatasetService.cpp
+	* Build Target for Running All Tests
+		* Currently, there is a build target to build all tests,
+		* but not one to run all of them.
 	* Make Thread Safe
 		The underlying MemRepository class
 		(AcumioServer/src/mem_repository.h)

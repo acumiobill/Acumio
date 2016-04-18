@@ -1,5 +1,7 @@
+#ifndef AcumioClient_AcumioClient_h
+#define AcumioClient_AcumioClient_h
 //============================================================================
-// Name        : AcumioClient.cpp
+// Name        : AcumioClient.h
 // Author      : Bill Province (bill@acumio.com)
 // Version     :
 // Copyright   : Copyright (C) 2016 Acumio
@@ -22,14 +24,16 @@ namespace acumio {
 
 class ClientConnector {
  public:
-  ClientConnector(std::shared_ptr<Channel> channel)
-      : stub_(Server::NewStub(channel)) {}
+  ClientConnector(std::unique_ptr<model::server::Server::StubInterface> stub)
+      : stub_(std::move(stub)) {}
 
   std::string concat(const std::vector<std::string>& inputs,
                      const std::string& separator);
 
  private:
-  std::unique_ptr<Server::Stub> stub_;
+  std::unique_ptr<model::server::Server::StubInterface> stub_;
 };
 
 } // end namespace acumio
+
+#endif // AcumioClient_AcumioClient_h

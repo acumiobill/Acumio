@@ -7,6 +7,7 @@
 //============================================================================
 
 #include <boost/program_options.hpp>
+#include <chrono>
 #include <grpc++/grpc++.h>
 #include <grpc++/security/credentials.h>
 #include <iostream>
@@ -14,6 +15,7 @@
 
 #include "server.grpc.pb.h"
 #include "AcumioClient.h"
+#include "server_stub_factory.h"
 
 using namespace std;
 using grpc::Channel;
@@ -49,13 +51,20 @@ int main(int argc, char** argv) {
   //auto creds = grpc::SslCredentials(grpc::SslCredentialsOptions());
   auto creds = grpc::InsecureChannelCredentials();
   auto channel = grpc::CreateChannel(address, creds);
-  acumio::ClientConnector client(channel);
+  acumio::model::server::ServerStubFactory stub_factory;
+  acumio::ClientConnector client(stub_factory.NewStub(channel));
 
   std::vector<std::string> inputs;
   inputs.push_back("!!!Hello");
   inputs.push_back("World!!!");
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  start = std::chrono::system_clock::now();
   std::string response = client.concat(inputs, " ");
-  cout << "Response: " << response << endl;
+  end = std::chrono::system_clock::now();
+  auto micros =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  cout << "Response: " << response << "; Calculated in " << micros.count()
+       << " microseconds." << endl;
 
   return 0;
 }
