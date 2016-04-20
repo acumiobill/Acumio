@@ -182,6 +182,8 @@ class MemRepository {
     return *(extractors_[i]);
   }
 
+  inline int32_t size() const { return main_index_.size(); }
+
   grpc::Status Add(const EltType& e) {
     // TODO: Properly guard element to handle multi-threaded access.
     //       This method is broken without these guards. However, below
@@ -191,7 +193,7 @@ class MemRepository {
     // too far, we will check for duplicates.
     std::unique_ptr<Comparable> main_key(main_extractor_->GetKey(e));
     RepositoryMap::iterator it = main_index_.lower_bound(main_key);
-    if (*(it->first) == *main_key) {
+    if (it != main_index_.end() && *(it->first) == *main_key) {
       // TODO: Log Error.
       std::stringstream error;
       error << "Cannot add duplicate element with key: (\""
@@ -219,6 +221,7 @@ class MemRepository {
     else {
       elements_[new_elt_pos] = e;
     }
+
     main_index_.emplace_hint(it, std::move(main_key), new_elt_pos);
     for (uint16_t i = 0; i < added_keys.size(); i++) {
       indices_[i].emplace(std::move(added_keys[i]), new_elt_pos);
@@ -281,6 +284,9 @@ class MemRepository {
   grpc::Status ApplyMutation(const std::unique_ptr<Comparable>& key,
                              const std::unique_ptr<Comparable>& updated_key,
                              ElementMutatorInterface<EltType>* mutator) {
+    // TODO: Consider refactoring this method to make it simpler. Not
+    // immediately clear what we can do, but it seems we try the same
+    // or similar test comparisons a few times in this method.
     RepositoryMap::iterator it = main_index_.find(key);
     if (it == main_index_.end()) {
       std::stringstream error;
@@ -289,11 +295,14 @@ class MemRepository {
             << "\")";
       return grpc::Status(grpc::StatusCode::NOT_FOUND, error.str());
     }
+
     int32_t location = it->second;
     EltType* element = &(elements_[location]);
 
     RepositoryMap::iterator new_location = main_index_.lower_bound(updated_key);
-    if (new_location->first == updated_key) {
+    if (new_location != main_index_.end() &&
+        (*key != *updated_key) &&
+        *(new_location->first) == *updated_key) {
       std::stringstream error;
       error << "There is already an element with the key "
             << updated_key->to_string() << ".";
@@ -308,11 +317,13 @@ class MemRepository {
       prior_keys.push_back((extractors_[i])->GetKey(*element));
     }
     grpc::Status mutate_result = mutator->Mutate(element);
+
     if (!mutate_result.ok()) {
       return mutate_result;
     }
 
     std::unique_ptr<Comparable> new_key = main_extractor_->GetKey(*element);
+
     if (*new_key != *updated_key) {
       // This should *never* happen if we do things properly. Any time we
       // perform a Mutate operation, we should verify beforehand that the
@@ -328,8 +339,27 @@ class MemRepository {
     }
     
     if (*updated_key != *key) {
-       main_index_.erase(it);
-       main_index_.emplace_hint(new_location, std::move(new_key), location);
+      if (it == new_location) {
+        // While this is fairly rare, we do need to handle this case. The
+        // standard approach of erasing the old element than adding with
+        // a hint for the new element gets broken when the old and new
+        // reference locations are the same (such as what happens if we
+        // update a key without actually changing its over all sort location).
+        // The reason is because the delete will invalidate the new location
+        // iterator reference.
+        auto removed_location = main_index_.erase(it);
+        if (removed_location != main_index_.begin()) {
+          removed_location--;
+        }
+        main_index_.emplace_hint(removed_location, std::move(new_key),
+                                 location);
+      } else {
+        main_index_.erase(it);
+        if (new_location == main_index_.end()) {
+          new_location--;
+        }
+        main_index_.emplace_hint(new_location, std::move(new_key), location);
+      }
     }
 
     for (uint16_t i = 0; i < indices_.size(); i++) {

@@ -25,8 +25,8 @@ class FullUser {
   ~FullUser();
 
   inline const model::User& user() const {return user_;}
-  inline const std::string password() const {return password_;}
-  inline const std::string salt() const {return salt_;}
+  inline const std::string& password() const {return password_;}
+  inline const std::string& salt() const {return salt_;}
   inline model::User* mutable_user() { return &user_; }
   inline std::string* mutable_password() { return &password_; }
   inline std::string* mutable_salt() { return &salt_; }
@@ -66,15 +66,18 @@ class UserRepository {
     return repository_->Get(key, elt);
   }
 
+  inline int32_t size() const { return repository_->size(); }
+
   PrimaryIterator LowerBoundByName(const std::string& name) {
     std::unique_ptr<Comparable> key(new StringComparable(name));
     return repository_->LowerBound(key);
   }
 /*
-  SecondaryIterator LowerBoundByIndex(const std::unique_ptr<Comparable>& key,
-                                      int index_number) const {
-    std::unique_ptr<Comparable> string_key(new StringComparable(key));
-    return repository_->LowerBoundByIndex(string_key, index_number);
+  Re-enable this when we start want to support search more effectively.
+
+  SecondaryIterator LowerBoundByEmail(const std::string& email) const {
+    std::unique_ptr<Comparable> key(new StringComparable(email));
+    return repository_->LowerBoundByIndex(string_key, 0);
   }
 */
  private:

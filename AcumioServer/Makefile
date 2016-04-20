@@ -95,7 +95,7 @@ test_obj/%.exe: test_obj/%.o $(TEST_DEPS)
 	$(CXX) $^ $(LDTSTFLAGS) -o $@
 
 clean:
-	rm -f AcumioServer.exe *.o src/*.o obj/*.o obj/*.d test_obj/*.d test_obj/*.exe
+	rm -f AcumioServer.exe *.o src/*.o obj/*.o obj/*.d test_obj/*.d test_obj/*.o test_obj/*.exe
 
 -include $(DEPFILES)
 -include $(TSTDEPFILES)

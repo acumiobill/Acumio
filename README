@@ -50,7 +50,10 @@ Installation for Google's grpc libraries is found here:
     https://github.com/grpc/grpc/blob/release-0_11/INSTALL.
 Installation instructions for SSL Certificates (assumes Ubuntu machine):
     https://help.ubuntu.com/lts/serverguide/certificates-and-security.html
-Installation instructions for Google's googletest libraries:
+Installation instructions for Google's googletest libraries are provided
+below. Note that these instructions were only tested on Ubuntu Linux, so
+may vary for other platforms. In particular, step 2 about installing cmake
+is probably Debian Linux specific. (Ubuntu Linux is a Debian derivative).
     Step 1:
      *** Install via git clone the googletest source code.
      ~$ cd workingdir
@@ -66,8 +69,7 @@ Installation instructions for Google's googletest libraries:
                                 travis.sh
 
     Step 2:
-     *** Install cmake (if you don't already have it. Installation process
-         may vary based on platform. Instructions below are for Ubuntu Linux).
+     *** Install cmake (Instruction assumes Debian Linux distribution).
      ~/workingdir$ sudo apt-get install cmake
     Step 3:
      *** Generate Makefile using cmake:
@@ -129,7 +131,6 @@ TODO (In rough priority order):
 		possible additional tests to consider, but for now, we should
 		just focus on these before moving on.
 		Sub Tasks:
-		* Test user_repository.cpp
 		* Test namespace_repository.cpp
 		* Test dataset_repository.cpp
 		* Test repository_repository.cpp
