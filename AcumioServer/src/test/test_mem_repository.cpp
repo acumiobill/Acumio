@@ -12,9 +12,9 @@
 //               the test cases for the other repositories.
 //============================================================================
 #include "mem_repository.h"
-#include <gtest/gtest.h>
 #include <iostream>
 #include "comparable.h"
+#include "test_macros.h"
 
 namespace acumio {
 namespace {
@@ -76,7 +76,7 @@ TEST(MemRepository, AddElementToBasicRepository) {
       std::move(key_extractor), &empty_added_extractors);
 
   MyClass elt("foo", 42);
-  EXPECT_TRUE(basic_repository.Add(elt).ok());
+  EXPECT_OK(basic_repository.Add(elt));
 }
 
 TEST(MemRepository, AddElementToMultiKeyedRepository) {
@@ -89,7 +89,7 @@ TEST(MemRepository, AddElementToMultiKeyedRepository) {
                                                     &added_extractors);
 
   MyClass elt("foo", 42);
-  EXPECT_TRUE(repository.Add(elt).ok());
+  EXPECT_OK(repository.Add(elt));
 }
 
 TEST(MemRepository, AddMultipleElements) {
@@ -102,11 +102,11 @@ TEST(MemRepository, AddMultipleElements) {
                                                     &added_extractors);
 
   MyClass elt("foo", 42);
-  EXPECT_TRUE(repository.Add(elt).ok());
+  EXPECT_OK(repository.Add(elt));
   MyClass elt2("bar", 10);
-  EXPECT_TRUE(repository.Add(elt2).ok());
+  EXPECT_OK(repository.Add(elt2));
   MyClass elt3("zebra", 100);
-  EXPECT_TRUE(repository.Add(elt3).ok());
+  EXPECT_OK(repository.Add(elt3));
 }
 
 } // anonymous namespace

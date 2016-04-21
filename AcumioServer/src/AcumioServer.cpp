@@ -31,7 +31,6 @@ using namespace std;
 
 #include <grpc++/grpc++.h>
 
-#include <server.grpc.pb.h>
 #include <boost/program_options.hpp>
 
 #include "DatasetService.h"
@@ -43,6 +42,7 @@ using namespace std;
 #include "namespace_repository.h"
 #include "referential_service.h"
 #include "repository_repository.h"
+#include "server.grpc.pb.h"
 
 using grpc::ServerContext;
 using grpc::ServerCredentials;

@@ -9,7 +9,7 @@
 //============================================================================
 
 #include <grpc++/grpc++.h>
-#include <names.pb.h>
+#include "names.pb.h"
 #include "dataset_repository.h"
 #include "namespace_repository.h"
 #include "repository_repository.h"

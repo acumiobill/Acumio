@@ -6,20 +6,13 @@
 // Description : A test_driver for the UserRepository class.
 //============================================================================
 #include "user_repository.h"
+
 #include "encrypter.h"
+#include "test_macros.h"
 #include "user.pb.h"
-#include <gtest/gtest.h>
-#include <iostream>
 
 namespace acumio {
 namespace {
-#define EXPECT_OK(expr) do { grpc::Status acumio_result; \
-                             EXPECT_TRUE((acumio_result = expr).ok()) \
-                                 << acumio_result.error_message();} while(0)
-
-#define EXPECT_ERROR(expr, code) do { EXPECT_EQ(expr.error_code(), \
-                                                code); } while(0)
-
 void PopulateBasicUser(const std::string& name,
                        model::User_AcumioRole role,
                        const std::string& email,

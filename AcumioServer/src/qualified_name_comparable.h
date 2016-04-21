@@ -10,7 +10,7 @@
 //============================================================================
 
 #include <string>
-#include <names.pb.h>
+#include "names.pb.h"
 #include "comparable.h"
 
 namespace acumio {

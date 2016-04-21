@@ -12,8 +12,8 @@
 //============================================================================
 
 #include <grpc++/grpc++.h>
-#include <server.pb.h>
-#include <user.pb.h>
+#include "server.pb.h"
+#include "user.pb.h"
 
 #include "encrypter.h"
 #include "user_repository.h"

@@ -9,9 +9,9 @@
 //============================================================================
 
 #include <grpc++/grpc++.h>
-#include <server.pb.h>
-#include <dataset.pb.h>
-#include <description.pb.h>
+#include "server.pb.h"
+#include "dataset.pb.h"
+#include "description.pb.h"
 
 #include "dataset_repository.h"
 #include "encrypter.h"

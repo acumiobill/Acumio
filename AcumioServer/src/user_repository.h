@@ -10,7 +10,7 @@
 //============================================================================
 
 #include "mem_repository.h"
-#include <user.pb.h>
+#include "user.pb.h"
 #include <grpc++/support/status.h>
 
 namespace acumio {

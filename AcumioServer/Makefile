@@ -34,6 +34,8 @@ DOTOTSTFILES := $(patsubst src/test/%.cpp, test_obj/%.o, $(TSTFILES))
 DEPFILES := $(patsubst obj/%.o, obj/%.d, $(DOTOFILES))
 TSTDEPFILES := $(patsubst test_obj/%.o, test_obj/%.d, $(DOTOTSTFILES))
 TSTEXEFILES := $(patsubst test_obj/%.o, test_obj/%.exe, $(DOTOTSTFILES))
+TSTRUNFILES := $(patsubst test_obj/%.exe, test_run/%.run, $(TSTEXEFILES))
+VERIFIEDRUNS := $(patsubst test_run/%.run, test_run/%.verify, $(TSTRUNFILES))
 # Building this sed command, we need to refer to the location where the
 # proto-lib headers are located. However, since their path contains the "/"
 # character - which is a special character in sed, we need to quote it.
@@ -50,13 +52,20 @@ SEDCMD += s/\([a-z_\.]*\)\.pb\.h/..\/apiprotos\/gen-cpp\/\1\.pb\.h/g"
 # Step 1 of sed: replace "mytarget.o:" with "test_obj/mytarget.o:"
 #   second line between next two (potentially)
 TSTSED := sed "s/\(.*\)\.o:/test_obj\/\1\.o:/;
-TSTSED += s/\([a-zA-Z_]*[^\.]..\)\.h/src\/\1\.h/g;
-TSTSED += s/\([a-z_\.]*\)\.pb\.h/..\/apiprotos\/gen-cpp\/\1\.pb\.h/g"
+TSTSED += s/\([a-zA-Z_\/]*[^\.]..\)\.h/src\/\1\.h/g;
+TSTSED += s/\([a-z_\.]*\)\.pb\.h/..\/apiprotos\/gen-cpp\/\1\.pb\.h/g;
+TSTSED += s/src\/src/src/g"
 
 vpath %.proto $(PROTOS_PATH)
 
-all: AcumioServer.exe
+all: AcumioServer.exe all_verified_tests
 	@echo "Done"
+
+all_verified_tests: $(VERIFIEDRUNS)
+	@echo "Tests Verified"
+
+all_test_runs: $(TSTRUNFILES)
+	@echo "Tests Run"
 
 all_tests: $(TSTEXEFILES)
 	@echo "Tests Built."
@@ -70,9 +79,11 @@ debug_list:
 	@echo "DOTOFILES: $(DOTOFILES)"
 	@echo "DEPFILES: $(DEPFILES)"
 	@echo "TEST_DEPS: $(TEST_DEPS)"
+	@echo "VERIFIEDRUNS: $(VERIFIEDRUNS)"
 
 AcumioServer.exe: $(SERVER_DEPS)
-	$(CXX) $^ $(LDFLAGS) -o $@
+	@echo "Linking $@"
+	@$(CXX) $^ $(LDFLAGS) -o $@
 
 obj/%.d: src/%.cpp
 	@$(SHELL) -ec 'mkdir -p obj'
@@ -83,19 +94,29 @@ test_obj/%.d: src/test/%.cpp
 	@$(SHELL) -ec '$(CXX) -MM -MG $(CXXFLAGS) $< | $(TSTSED) > $@'
 
 obj/%.o: src/%.cpp
+	@echo "Compiling $<"
 	@$(SHELL) -ec 'mkdir -p obj'
-	$(CXX) -c -o $@ $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) $<
+	@$(CXX) -c -o $@ $(CXXFLAGS) $(CPPFLAGS) -I $(GENCPP_PATH) $(DEFINES) $<
 
 test_obj/%.o: src/test/%.cpp
+	@echo "Compiling $<"
 	@$(SHELL) -ec 'mkdir -p test_obj'
-	$(CXX) -c -o $@ $(CXXFLAGS) $(CPPTSTFLAGS) -I $(GENCPP_PATH) $(DEFINES) $<
+	@$(CXX) -c -o $@ $(CXXFLAGS) $(CPPTSTFLAGS) -I $(GENCPP_PATH) $(DEFINES) $<
 
 test_obj/%.exe: test_obj/%.o $(TEST_DEPS)
-	$(SHELL) -ec 'mkdir -p test_obj'
-	$(CXX) $^ $(LDTSTFLAGS) -o $@
+	@echo "Linking $@"
+	@$(SHELL) -ec 'mkdir -p test_obj'
+	@$(CXX) $^ $(LDTSTFLAGS) -o $@
+
+test_run/%.run: test_obj/%.exe
+	@$(SHELL) -ec 'mkdir -p test_run'
+	@$(SHELL) -ec '$< > $@'
+
+test_run/%.verify: test_run/%.run
+	@$(SHELL) -ec './testchecker.sh $< $@'
 
 clean:
-	rm -f AcumioServer.exe *.o src/*.o obj/*.o obj/*.d test_obj/*.d test_obj/*.o test_obj/*.exe
+	rm -f AcumioServer.exe *.o src/*.o obj/*.o obj/*.d test_obj/*.d test_obj/*.o test_obj/*.exe test_run/*.run test_run/*.verify
 
 -include $(DEPFILES)
 -include $(TSTDEPFILES)

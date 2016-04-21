@@ -9,8 +9,8 @@
 //============================================================================
 
 #include <grpc++/grpc++.h>
-#include <server.pb.h>
-#include <names.pb.h>
+#include "server.pb.h"
+#include "names.pb.h"
 #include "dataset_repository.h"
 #include "namespace_repository.h"
 #include "referential_service.h"
