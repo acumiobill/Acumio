@@ -139,9 +139,6 @@ TODO (In rough priority order):
 		* Test NamespaceService.cpp
 		* Test RepositoryService.cpp
 		* Test DatasetService.cpp
-	* Build Target for Running All Tests
-		* Currently, there is a build target to build all tests,
-		* but not one to run all of them.
 	* Make Thread Safe
 		The underlying MemRepository class
 		(AcumioServer/src/mem_repository.h)
