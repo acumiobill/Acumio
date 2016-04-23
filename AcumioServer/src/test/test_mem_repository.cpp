@@ -14,7 +14,7 @@
 #include "mem_repository.h"
 #include <iostream>
 #include "comparable.h"
-#include "test_macros.h"
+#include "gtest_extensions.h"
 
 namespace acumio {
 namespace {

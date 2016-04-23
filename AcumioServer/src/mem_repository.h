@@ -9,6 +9,7 @@
 //               repository. (Not yet threadsafe).
 //============================================================================
 
+#include <iostream> // Remove me. Needed for std::cout.
 #include <map>
 #include <sstream>
 #include <stack>

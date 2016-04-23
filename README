@@ -131,10 +131,8 @@ TODO (In rough priority order):
 		possible additional tests to consider, but for now, we should
 		just focus on these before moving on.
 		Sub Tasks:
-		* Test namespace_repository.cpp
-		* Test dataset_repository.cpp
 		* Test repository_repository.cpp
-		* Test referential_service.cpp
+		* Test dataset_repository.cpp
 		* Test UserService.cpp
 		* Test NamespaceService.cpp
 		* Test RepositoryService.cpp
@@ -202,6 +200,17 @@ TODO (In rough priority order):
 		is about generating messages for the purposes of debugging
 		our server. Need to select a decent logger for this (probably
 		use boost libraries).
+	* De-prioritized Unit Tests
+		The following unit tests should definitely still be created,
+		but do not have the highest priority, as they are fairly
+		well covered by other tests. So, not needed by MVP,
+		but needed for our long-term sanity. These are listed in
+		rough priority order.
+		* AcumioServer Test (should separate main() method first).
+		* MemRepository (this has been started, but not completed).
+		* ReferentialService
+		* TimeUtil
+		* MultiMutationContext
 	* Fix Open-Source Copyright information.
 		Need to check legal requirements for including open-source
 		usage information. Looking so far, since the Google libraries
@@ -209,6 +218,7 @@ TODO (In rough priority order):
                 to modify any Copyright information in our files; only we
                 will need to include Google's BSD-3 Copyright notice in
                 any manuals or publications.
+
 	* Add I18n Support.
 		Really low on priority, but at some point, we should address
 		this.

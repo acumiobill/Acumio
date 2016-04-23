@@ -58,8 +58,8 @@ TSTSED += s/src\/src/src/g"
 
 vpath %.proto $(PROTOS_PATH)
 
-all: AcumioServer.exe all_verified_tests
-	@echo "Done"
+all: all_verified_tests AcumioServer.exe
+	@echo "All Make Targets Complete"
 
 all_verified_tests: $(VERIFIEDRUNS)
 	@echo "Tests Verified"

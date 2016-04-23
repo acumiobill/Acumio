@@ -36,6 +36,8 @@ class NamespaceRepository {
   NamespaceRepository();
   ~NamespaceRepository();
 
+  inline int32_t size() const { return repository_->size(); }
+
   inline grpc::Status AddWithDescription(const model::Namespace& name_space,
                                          const model::Description& desc) {
     return repository_->AddWithDescription(name_space, desc);
@@ -138,6 +140,10 @@ class NamespaceRepository {
   PrimaryIterator LowerBoundByFullName(const std::string& full_name) {
     std::unique_ptr<Comparable> key(new StringComparable(full_name));
     return repository_->LowerBound(key);
+  }
+
+  const PrimaryIterator primary_begin() const {
+    return repository_->primary_begin();
   }
 
   const PrimaryIterator primary_end() const {

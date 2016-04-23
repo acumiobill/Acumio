@@ -8,7 +8,7 @@
 #include "user_repository.h"
 
 #include "encrypter.h"
-#include "test_macros.h"
+#include "gtest_extensions.h"
 #include "user.pb.h"
 
 namespace acumio {
