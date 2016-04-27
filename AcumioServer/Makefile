@@ -14,7 +14,7 @@ CXXFLAGS += -std=c++11 -Wall
 CXXFLAGS += -g
 # TODO: Replace -lgrpc++_unsecure with -lgrpc++ when ready to move to ssl
 LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc -lgpr -lprotobuf -lpthread -ldl -lboost_program_options
-LDTSTFLAGS = -L/usr/lib -lgmock -lgmock_main
+LDTSTFLAGS = -L/usr/lib -lgmock -lgmock_main -lmcheck
 LDTSTFLAGS += $(LDFLAGS)
 PROTOC = protoc
 GRPC_CPP_PLUGIN = grpc_cpp_plugin
@@ -109,10 +109,12 @@ test_obj/%.exe: test_obj/%.o $(TEST_DEPS)
 	@$(CXX) $^ $(LDTSTFLAGS) -o $@
 
 test_run/%.run: test_obj/%.exe
+	@echo "running test: $<"
 	@$(SHELL) -ec 'mkdir -p test_run'
 	@$(SHELL) -ec '$< > $@'
 
 test_run/%.verify: test_run/%.run
+	@echo "verifying test: $<"
 	@$(SHELL) -ec './testchecker.sh $< $@'
 
 clean:

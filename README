@@ -131,7 +131,6 @@ TODO (In rough priority order):
 		possible additional tests to consider, but for now, we should
 		just focus on these before moving on.
 		Sub Tasks:
-		* Test repository_repository.cpp
 		* Test dataset_repository.cpp
 		* Test UserService.cpp
 		* Test NamespaceService.cpp
@@ -209,8 +208,14 @@ TODO (In rough priority order):
 		* AcumioServer Test (should separate main() method first).
 		* MemRepository (this has been started, but not completed).
 		* ReferentialService
-		* TimeUtil
+		* DescribedRepository
+		* MultiDescribedRepository
+		* MultiMutationFactory
 		* MultiMutationContext
+		* Additional tests for Comparable and its derivates.
+		* TimeUtil
+		* pointer_less
+		* ProtoIterator (and ConstProtoIterator)
 	* Fix Open-Source Copyright information.
 		Need to check legal requirements for including open-source
 		usage information. Looking so far, since the Google libraries

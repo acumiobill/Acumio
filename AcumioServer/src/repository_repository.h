@@ -111,13 +111,15 @@ class RepositoryRepository {
     return repository_->primary_end();
   }
 
+  inline uint32_t size() const { return repository_->size(); }
+
   SecondaryIterator LowerBoundByNamespace(const std::string& name_space) const;
 
-  inline const SecondaryIterator namespace_iter_begin() const {
+  inline const SecondaryIterator namespace_begin() const {
     return repository_->secondary_begin(0);
   }
 
-  inline const SecondaryIterator namespace_iter_end() const {
+  inline const SecondaryIterator namespace_end() const {
     return repository_->secondary_end(0);
   }
 

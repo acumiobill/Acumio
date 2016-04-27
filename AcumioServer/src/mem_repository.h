@@ -183,7 +183,7 @@ class MemRepository {
     return *(extractors_[i]);
   }
 
-  inline int32_t size() const { return main_index_.size(); }
+  inline uint32_t size() const { return main_index_.size(); }
 
   grpc::Status Add(const EltType& e) {
     // TODO: Properly guard element to handle multi-threaded access.
@@ -206,7 +206,8 @@ class MemRepository {
     // Next, extract all the key values to be updated.
     std::vector<std::unique_ptr<Comparable>> added_keys;
     for (uint16_t i = 0; i < extractors_.size(); i++) {
-      added_keys.push_back(extractors_[i]->GetKey(e));
+      std::unique_ptr<Comparable> current_key = extractors_[i]->GetKey(e);
+      added_keys.push_back(std::move(current_key));
     }
    
     // Get the position in the elements_ array from the free_list_.
@@ -247,8 +248,8 @@ class MemRepository {
     main_index_.erase(it);
     for (uint32_t i = 0; i < indices_.size(); i++) {
       std::unique_ptr<Comparable> index_key = extractors_[i]->GetKey(elt);
-      RepositoryMultiMap& index = indices_[i];
-      grpc::Status result = DeleteFromSecondaryIndex(index, key, i, elt_pos);
+      grpc::Status result =
+          DeleteFromSecondaryIndex(indices_[i], index_key, i, elt_pos);
       if (!result.ok()) {
         return result;
       }
@@ -446,6 +447,7 @@ class MemRepository {
     while (lower != upper && lower->second != elt_pos) {
       lower++;
     }
+
     if (lower->second != elt_pos) {
       // TODO: Log Error. Error probably caused by multi-threaded access
       // corruption. Since we are not really thread-safe here, we should

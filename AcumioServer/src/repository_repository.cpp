@@ -8,8 +8,6 @@
 //============================================================================
 
 #include "repository_repository.h"
-#include <sstream>
-
 #include "comparable.h"
 #include "model_constants.h"
 

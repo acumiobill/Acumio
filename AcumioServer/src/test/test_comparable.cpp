@@ -4,6 +4,9 @@
 // Version     :
 // Copyright   : Copyright (C) 2016 Acumio
 // Description : A test_driver for comparable.cpp.
+//               TODO: Add a test to verify for each Comparable derivative
+//               that for each Comparable a and b,
+//               a < b  iff a.compare_string() < b.compare_string().
 //============================================================================
 #include "comparable.h"
 #include <gtest/gtest.h>
@@ -48,6 +51,15 @@ TEST(StringPairComparableTest, BasicCompare) {
   EXPECT_GT(a_pair.compare_to(empty_aa), 0);
   EXPECT_LT(a_pair.compare_to(a_b), 0);
   EXPECT_LT(empty_pair.compare_to(empty_aa), 0);
+}
+
+TEST(StringPairComparableTest, CompareString) {
+  std::string prefix = "prefix";
+  std::string suffix = "suffix";
+  StringPairComparable comparable(prefix, suffix);
+  std::string compare_string = comparable.compare_string();
+  EXPECT_EQ(compare_string.size(), prefix.size() + suffix.size() + 1);
+  EXPECT_EQ(compare_string[prefix.size()], '\x01');
 }
 } // namespace acumio
 

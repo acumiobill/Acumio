@@ -217,7 +217,7 @@ bool ReferentialService::NamespaceContainsRepository(
     const model::Namespace& name_space) const {
   RepositoryRepository::SecondaryIterator repository_iter =
       repository_repository_->LowerBoundByNamespace(name_space.full_name());
-  if (repository_iter == repository_repository_->namespace_iter_end()) {
+  if (repository_iter == repository_repository_->namespace_end()) {
     // In this case, there are no Repositories where the namespace lookup
     // comes after or matches the desired dataset.
     return false;

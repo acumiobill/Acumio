@@ -87,7 +87,7 @@ class DescribedRepository {
     return dynamic_cast<const Extractor&>(repository_->ith_extractor(i));
   }
 
-  inline int32_t size() const { return repository_->size(); }
+  inline uint32_t size() const { return repository_->size(); }
 
   inline grpc::Status Add(const acumio::model::Described<Entity>& e) {
     return repository_->Add(e);

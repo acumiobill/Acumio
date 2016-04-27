@@ -412,7 +412,7 @@ TEST(NamespaceRepository, DescriptionUpdates) {
   // the DescriptionHistory after this clearing the description twice
   // in a row.
   ASSERT_EQ(found_history.version_size(), 3);
-  
+
   root.set_is_repository_name(true);
   root_description.set_contents(contents);
   EXPECT_OK(repository.UpdateWithDescription("", root, root_description));

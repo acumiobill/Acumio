@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include <grpc++/grpc++.h>
+#include <sstream>
 #include <vector>
 
 #define EXPECT_OK(expr) do { grpc::Status acumio_result; \
@@ -33,8 +34,10 @@ grpc::Status CompareStringVectorToIterator(std::vector<std::string> v,
   for (; it != end && vector_pos < v.size(); it++, vector_pos++) {
     std::string iter_string = it->first->to_string();
     if (iter_string != v[vector_pos]) {
+      std::stringstream error;
+      error << "'" << iter_string << "' != '" << v[vector_pos] << "'";
       return grpc::Status(grpc::StatusCode::FAILED_PRECONDITION,
-                          iter_string + " != " + v[vector_pos]);
+                          error.str());
     }
   }
   if (it != end) {

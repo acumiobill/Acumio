@@ -36,7 +36,7 @@ class NamespaceRepository {
   NamespaceRepository();
   ~NamespaceRepository();
 
-  inline int32_t size() const { return repository_->size(); }
+  inline uint32_t size() const { return repository_->size(); }
 
   inline grpc::Status AddWithDescription(const model::Namespace& name_space,
                                          const model::Description& desc) {
