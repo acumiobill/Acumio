@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package acumio.model;
+option java_package = "com.acumio.model";
+option java_outer_classname = "GlossaryProtos";
+
+message Glossary {
+  uint32 id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message GlossaryTerm {
+  uint32 id = 1;
+  string term = 2;
+  repeated string synonym = 3;
+  repeated string abbreviation = 4;
+  repeated string definition = 5;
+}

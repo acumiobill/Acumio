@@ -36,7 +36,8 @@ debug_dummy:
 	echo "DOTODEPS: ($(DOTODEPS))"
 
 $(OUTLIB_DIR)/%.o: $(GENCPP_PATH)/%.cc $(GENCPP_PATH)/generation.done $(OUTLIB_DIR)/depends.done
-	$(CXX) -c -o $@ $(CPPFLAGS) -I$(GENCPP_PATH) $(DEFINES) $(CXXFLAGS) $(LDFLAGS) $<
+	@echo "Compiling $<"
+	@$(CXX) -c -o $@ $(CPPFLAGS) -I$(GENCPP_PATH) $(DEFINES) $(CXXFLAGS) $(LDFLAGS) $<
 
 $(GENCPP_PATH)/generation.done: $(GENCPPFILES)
 	echo "All code-generation done." > $(GENCPP_PATH)/generation.done
@@ -48,11 +49,13 @@ $(OUTLIB_DIR)/%.d: $(GENCPP_PATH)/%.cc
 	@$(SHELL) -ec '$(CXX) -MM -MG $(CXXFLAGS) $< > $@'
 
 $(GENCPP_PATH)/%.pb.cc: $(PROTOS_PATH)/%.proto
-	@$(PROTOC) -I $(PROTOS_PATH) --cpp_out=$(GENCPP_PATH) $<
+	@echo "generating from proto: $<"
+	@$(PROTOC) -I $(PROTOS_PATH) --cpp_out=$(GENCPP_PATH) \
+	--java_out=$(GENJAVA_PATH) $<
 
 $(GENCPP_PATH)/server.grpc.pb.cc: $(PROTOS_PATH)/server.proto
-	$(PROTOC) -I $(PROTOS_PATH) --grpc_out=$(GENCPP_PATH)/ $(PLUGIN_ARG) $(PROTOS_PATH)/server.proto
-
+	@echo "generating server.grpc.pb.cc"
+	@$(PROTOC) -I $(PROTOS_PATH) --grpc_out=$(GENCPP_PATH)/ $(PLUGIN_ARG) $(PROTOS_PATH)/server.proto
 
 clean:
 	rm -f $(OUTLIB_DIR)/*.o $(GENCPP_PATH)/*.pb.cc $(GENCPP_PATH)/*.pb.h
