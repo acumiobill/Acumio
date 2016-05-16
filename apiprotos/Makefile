@@ -50,6 +50,8 @@ $(OUTLIB_DIR)/%.d: $(GENCPP_PATH)/%.cc
 
 $(GENCPP_PATH)/%.pb.cc: $(PROTOS_PATH)/%.proto
 	@echo "generating from proto: $<"
+	@$(SHELL) -ec 'mkdir -p $(GENCPP_PATH)'
+	@$(SHELL) -ec 'mkdir -p $(GENJAVA_PATH)'
 	@$(PROTOC) -I $(PROTOS_PATH) --cpp_out=$(GENCPP_PATH) \
 	--java_out=$(GENJAVA_PATH) $<
 

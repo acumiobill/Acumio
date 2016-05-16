@@ -209,7 +209,7 @@ class MemRepository {
       std::unique_ptr<Comparable> current_key = extractors_[i]->GetKey(e);
       added_keys.push_back(std::move(current_key));
     }
-   
+
     // Get the position in the elements_ array from the free_list_.
     // Note that the bottom entry in the free_list_ stack is always
     // the one equal to the total size of the elements_ array. 

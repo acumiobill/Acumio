@@ -13,7 +13,7 @@ CXXFLAGS += -std=c++11 -Wall
 # Debug version (comment out next line if you need non-debug).
 CXXFLAGS += -g
 # TODO: Replace -lgrpc++_unsecure with -lgrpc++ when ready to move to ssl
-LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc -lgpr -lprotobuf -lpthread -ldl -lboost_program_options
+LDFLAGS += -L/usr/local/lib -lgrpc++_unsecure -lgrpc -lgpr -lprotobuf -lpthread -ldl -lboost_program_options -latomic
 LDTSTFLAGS = -L/usr/lib -lgmock -lgmock_main -lmcheck
 LDTSTFLAGS += $(LDFLAGS)
 PROTOC = protoc

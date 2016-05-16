@@ -17,6 +17,15 @@
 //               allows us to do so in the interface. Example: I want to
 //               have a repository with multiple indices. The indices may
 //               be of different types, some of which may be complex.
+//
+//               This additionally requires that the comparable have a
+//               string-based comparison order; i.e., the interface has
+//               a compare_string() method, and the requirement is that
+//               for Comparables a and b (of consistent types) that
+//               a.compare_to(b) < 0 iff
+//               a.compare_string().compare(b.compare_string()) < 0.
+//               While this may limit our notion of "Comparable" the advantage
+//               is that we can put our Comparables into a Trie data structure.
 //============================================================================
 
 #include <string>
