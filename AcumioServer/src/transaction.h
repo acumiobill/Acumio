@@ -238,6 +238,11 @@ class TransactionManager;
 
 class Transaction {
  public:
+  typedef uint16_t Id;
+
+  // Use this value to represent a transaction id corresponding to no
+  // transactions.
+  static const Id NOT_A_TX = UINT16_MAX;
 
   // While it might seem odd to store a value with a storage requirement of
   // 3 bits inside a 64-bit integer, we need this to make the atomic
@@ -308,7 +313,7 @@ class Transaction {
     AtomicInfo tmp = info_;
     return tmp.state;
   }
-  inline uint16_t id() const { return id_; }
+  inline Id id() const { return id_; }
   inline uint64_t operation_start_time() const {
     AtomicInfo tmp = info_;
     return tmp.operation_start_time;
@@ -340,7 +345,7 @@ class Transaction {
   // the TransactionManager. No public construction/destruction.
   // The TestHook is not owned by the Transaction, and is expected to have
   // a lifetime exceeding that of the Transaction.
-  Transaction(const acumio::test::TestHook<Transaction*>* hook, uint16_t id);
+  Transaction(const acumio::test::TestHook<Transaction*>* hook, Id id);
   ~Transaction();
   bool Reset(uint64_t expected_start_time);
   // Reset if operation_time_ <= youngest_reset. Returns true if we actually
@@ -352,7 +357,7 @@ class Transaction {
                           uint64_t effective_commit_time);
 
   const acumio::test::TestHook<Transaction*>* hook_;
-  uint16_t id_;
+  Id id_;
   // TODO: Consider how to atomically update info_ along with
   // operation_complete_time_. It seems that there may be an issue
   // with using std::atomic on structs with more than 128 bits.
@@ -384,50 +389,82 @@ class ReadTransaction {
 
 class WriteTransaction {
  public:
+
+  // We will specialize this TrackingState class in our applications.
+  // The intent is that we will created derived classes then pass in
+  // pointers to TrackingState instances.
+  // The tracking state will usually be a mechanism to reference what
+  // has been changed by the transaction, so that we can efficiently
+  // perform Completion or Rollback operations.
+  class TrackingState {
+    public:
+     virtual ~TrackingState();
+
+    protected:
+     TrackingState();
+  };
+
   typedef std::function<grpc::Status(const Transaction*)> OpFunction;
-  typedef std::function<void(const Transaction*, uint64_t)> CompletionFunction;
-  typedef std::function<void(const Transaction*, uint64_t)> RollbackFunction;
+  typedef std::function<grpc::Status(const Transaction*,
+                                     TrackingState*)> TrackingOpFunction;
+  struct VariantOpFunction {
+    VariantOpFunction() : op(), tracking_op(), use_tracking(false) {}
+    VariantOpFunction(OpFunction fn) : op(fn), tracking_op(),
+        use_tracking(false) {}
+    VariantOpFunction(TrackingOpFunction fn) : op(), tracking_op(fn),
+        use_tracking(true) {}
+    OpFunction op;
+    TrackingOpFunction tracking_op;
+    bool use_tracking;
+  };
 
-  WriteTransaction(TransactionManager& manager);
+  typedef std::function<grpc::Status(const Transaction*,
+                                     uint64_t)> CompletionFunction;
+  typedef std::function<void(const Transaction*,
+                             TrackingState*,
+                             uint64_t)> TrackingCompletionFunction;
+  struct VariantCompletionFunction {
+    VariantCompletionFunction() : completion(), tracking_completion(),
+        use_tracking(false) {}
+    VariantCompletionFunction(CompletionFunction fn) : completion(fn),
+        tracking_completion(), use_tracking(false) {}
+    VariantCompletionFunction(TrackingCompletionFunction fn) : completion(),
+        tracking_completion(fn), use_tracking(true) {}
+    CompletionFunction completion;
+    TrackingCompletionFunction tracking_completion;
+    bool use_tracking;
+  };
 
-  // This will have unpredictable results if started_transaction is not
-  // in the state Transaction::WRITE. Use this approach if you have
-  // some part of your transaction that might be hard to manage with
-  // callback functions, but where the rest of the process could be
-  // managed this way.
-  // TODO: Evaluate if we need this. It's too soon to tell, but if we
-  // find after a couple iterations that we are simply not using this,
-  // we should drop it.
+  typedef std::function<void(const Transaction*,
+                             uint64_t)> RollbackFunction;
+  typedef std::function<void(const Transaction*,
+                             TrackingState*,
+                             uint64_t)> TrackingRollbackFunction;
+  struct VariantRollbackFunction {
+    VariantRollbackFunction() : rollback(), tracking_rollback(),
+        use_tracking(false) {}
+    VariantRollbackFunction(RollbackFunction fn) : rollback(fn),
+        tracking_rollback(), use_tracking(false) {}
+    VariantRollbackFunction(TrackingRollbackFunction fn) : rollback(),
+        tracking_rollback(fn), use_tracking(true) {}
+    RollbackFunction rollback;
+    TrackingRollbackFunction tracking_rollback;
+    bool use_tracking;
+  };
+
+  WriteTransaction(TransactionManager& manager, TrackingState* state);
   WriteTransaction(TransactionManager& manager,
+                   TrackingState* state,
                    Transaction* started_transaction);
   ~WriteTransaction();
-
-  inline void AddOperation(OpFunction op,
-                           CompletionFunction completion,
-                           RollbackFunction rollback) {
-    ops_.push_back(op);
-    completions_.push_back(completion);
-    rollbacks_.push_back(rollback);
-  }
-
-  // The Commit process will perform each op - provided in add_operation
-  // in the order presented. If one of the provided ops fail, we invoke
-  // the corresponding rollback function for each of the performed ops that
-  // already succeeded.
-  // The rollback operations are performed in reverse order so that
-  // if say the third operation fails, the rollback correpsonding to
-  // the second operation will be invoked, followed by invoking
-  // the first rollback.
-  //
-  // If all OpFunction ops succeed, we follow up with the CompletionFunction
-  // operations - each is performed in the same order as the order presented.
   
+  void AddOperation(OpFunction op,
+                    CompletionFunction completion,
+                    RollbackFunction rollback);
+  void AddOperation(TrackingOpFunction op,
+                    TrackingCompletionFunction completion,
+                    TrackingRollbackFunction rollback);
   grpc::Status Commit();
-
-  // TODO: Fix this. This might have been okay when we acquired the tx
-  // only during Commit, but now that we initialize the tx at construction,
-  // we will need to make sure to properly release the tx.
-  // Also, it's unclear how to relate this to the rollback process.
   bool Release();
 
  private:
@@ -438,12 +475,12 @@ class WriteTransaction {
   grpc::Status HandleTimeoutDuringCommit(int last_success_index);
 
   TransactionManager& manager_;
+  TrackingState* state_;
   Transaction* tx_;
   uint64_t write_start_time_;
-  uint64_t finish_time_;
-  std::vector<OpFunction> ops_;
-  std::vector<CompletionFunction> completions_;
-  std::vector<RollbackFunction> rollbacks_;
+  std::vector<VariantOpFunction> ops_;
+  std::vector<VariantCompletionFunction> completions_;
+  std::vector<VariantRollbackFunction> rollbacks_;
   bool done_;
 };
 
@@ -481,7 +518,7 @@ class TransactionManager {
   // COMPLETING_WRITE and before entering COMMIT stage. In the WriteTransaction
   // class, the CompletionFunctions provided by the AddOperation method are
   // expected to take care of this.
-  const Transaction* get_transaction(uint16_t transaction_id) const;
+  const Transaction* get_transaction(Transaction::Id transaction_id) const;
 
   inline uint16_t get_pool_size() const { return pool_size_; }
   inline uint64_t get_timeout_nanos() const { return timeout_nanos_; }
@@ -540,8 +577,8 @@ class TransactionManager {
   // age_list has 13 elements, then you should expect to see all of the
   // values 0,1,2, ... 29 scattered between the age_list_ and the
   // free_list_.
-  std::vector<uint16_t> free_list_;
-  std::vector<uint16_t> age_list_;
+  std::vector<Transaction::Id> free_list_;
+  std::vector<Transaction::Id> age_list_;
 };
 
 } // namespace transaction

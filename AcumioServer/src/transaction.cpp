@@ -23,7 +23,7 @@ namespace acumio {
 namespace transaction {
 
 Transaction::Transaction(const acumio::test::TestHook<Transaction*>* hook,
-                         uint16_t id) :
+                         Id id) :
     hook_(hook), id_(id), operation_complete_time_(UINT64_C(0)) {
   Transaction::AtomicInfo new_info;
   new_info.operation_start_time = UINT64_C(0);
@@ -223,24 +223,53 @@ ReadTransaction::~ReadTransaction() {
   }
 }
 
-WriteTransaction::WriteTransaction(TransactionManager& manager) :
-    manager_(manager), tx_(nullptr), write_start_time_(UINT64_C(0)),
-    finish_time_(UINT64_C(0)), ops_(), completions_(), rollbacks_(),
-    done_(false) {
+WriteTransaction::TrackingState::TrackingState() {}
+WriteTransaction::TrackingState::~TrackingState() {}
+
+WriteTransaction::WriteTransaction(TransactionManager& manager,
+                                   WriteTransaction::TrackingState* state) :
+    manager_(manager), state_(state), tx_(nullptr),
+    write_start_time_(UINT64_C(0)), ops_(), completions_(),
+    rollbacks_(), done_(false) {
   tx_ = manager.StartWriteTransaction(&write_start_time_);
 }
 
-WriteTransaction::WriteTransaction(TransactionManager& manager,
-                                   Transaction* tx) :
-    manager_(manager), tx_(tx), write_start_time_(tx->operation_start_time()),
-    finish_time_(UINT64_C(0)), ops_(), completions_(),
+WriteTransaction::WriteTransaction(
+    TransactionManager& manager,
+    WriteTransaction::TrackingState* state,
+    Transaction* tx) :
+    manager_(manager), state_(state), tx_(tx),
+    write_start_time_(tx->operation_start_time()), ops_(), completions_(),
     rollbacks_(), done_(false) {}
+
+void WriteTransaction::AddOperation(
+    WriteTransaction::OpFunction op,
+    WriteTransaction::CompletionFunction completion,
+    WriteTransaction::RollbackFunction rollback) {
+  VariantOpFunction var_op(op);
+  VariantCompletionFunction var_completion(completion);
+  VariantRollbackFunction var_rollback(rollback);
+  ops_.push_back(var_op);
+  completions_.push_back(var_completion);
+  rollbacks_.push_back(var_rollback);
+}
+
+void WriteTransaction::AddOperation(
+    WriteTransaction::TrackingOpFunction op,
+    WriteTransaction::TrackingCompletionFunction completion,
+    WriteTransaction::TrackingRollbackFunction rollback) {
+  VariantOpFunction var_op(op);
+  VariantCompletionFunction var_completion(completion);
+  VariantRollbackFunction var_rollback(rollback);
+  ops_.push_back(var_op);
+  completions_.push_back(var_completion);
+  rollbacks_.push_back(var_rollback);
+}
 
 WriteTransaction::~WriteTransaction() {
   if (!done_) {
-    // This really should not happen, and typically indicates a programming
-    // error. TODO: Log this error and make it an alert.
-    manager_.Release(tx_, finish_time_ != 0 ? finish_time_ : write_start_time_);
+    // TODO: Log an error if we reach here.
+    manager_.Release(tx_, write_start_time_);
   }
 }
 
@@ -284,7 +313,9 @@ grpc::Status WriteTransaction::HandleFailDuringCommit(
   }
 
   for (int j = failed_op_index-1; j >= 0; j--) {
-    rollbacks_[j](tx_, write_start_time_);
+    rollbacks_[j].use_tracking ?
+        rollbacks_[j].tracking_rollback(tx_, state_, write_start_time_) :
+        rollbacks_[j].rollback(tx_, write_start_time_);
   }
   if (requires_release) {
     manager_.Release(tx_, write_start_time_);
@@ -298,7 +329,9 @@ grpc::Status WriteTransaction::HandleTimeoutDuringCommit(
   grpc::Status result = grpc::Status(grpc::StatusCode::DEADLINE_EXCEEDED,
                                      "Transaction timed out.");
   for (int j = last_success_index; j >= 0; j--) {
-    rollbacks_[j](tx_, write_start_time_);
+    rollbacks_[j].use_tracking ?
+        rollbacks_[j].tracking_rollback(tx_, state_, write_start_time_) :
+        rollbacks_[j].rollback(tx_, write_start_time_);
   }
   manager_.Release(tx_, write_start_time_);
   done_ = true;
@@ -323,7 +356,8 @@ grpc::Status WriteTransaction::Commit() {
   uint64_t timeout = write_start_time_ + manager_.get_timeout_nanos();
 
   for (uint16_t i = 0; i < ops_.size(); i++) {
-    result = ops_[i](tx_);
+    result = ops_[i].use_tracking ? ops_[i].tracking_op(tx_, state_)
+                                  : ops_[i].op(tx_);
     uint64_t current_nanos = acumio::time::TimerNanosSinceEpoch();
     if (! result.ok()) {
       return HandleFailDuringCommit(result, timeout, current_nanos, i);
@@ -335,7 +369,9 @@ grpc::Status WriteTransaction::Commit() {
 
   if (!tx_->StartWriteComplete(write_start_time_)) {
     for (int j = ops_.size() - 1; j >= 0; j--) {
-      rollbacks_[j](tx_, write_start_time_);
+      rollbacks_[j].use_tracking ?
+          rollbacks_[j].tracking_rollback(tx_, state_, write_start_time_) :
+          rollbacks_[j].rollback(tx_, write_start_time_);
     }
     manager_.Release(tx_, write_start_time_);
     std::stringstream error;
@@ -345,11 +381,23 @@ grpc::Status WriteTransaction::Commit() {
   }
 
   for (uint16_t i = 0; i < ops_.size(); i++) {
-    completions_[i](tx_, write_start_time_);
+    if (completions_[i].use_tracking) {
+      completions_[i].tracking_completion(tx_, state_, write_start_time_);
+    } else {
+      completions_[i].completion(tx_, write_start_time_);
+    }
   }
 
   manager_.Release(tx_, write_start_time_);
   return grpc::Status::OK;
+}
+
+bool WriteTransaction::Release() {
+  if (!done_) {
+    done_ = true;
+    return manager_.Release(tx_, write_start_time_);
+  }
+  return false;
 }
 
 TransactionManager::TransactionManager(
@@ -359,7 +407,7 @@ TransactionManager::TransactionManager(
     timeout_nanos_(timeout_nanos), reap_timeout_nanos_(reap_timeout_nanos),
     hook_(hook), free_list_(), age_list_() {
   // assert(timeout_nanos < reap_timeout_nanos)
-  for (uint16_t i = 0; i < pool_size_; i++) {
+  for (Transaction::Id i = 0; i < pool_size_; i++) {
     transaction_pool_[i] = new Transaction(hook, i);
   }
   // The next transaction to be allocated will be transaction 0.
@@ -367,7 +415,7 @@ TransactionManager::TransactionManager(
 }
 
 TransactionManager::~TransactionManager() {
-  for (int i = 0; i < pool_size_; i++) {
+  for (uint16_t i = 0; i < pool_size_; i++) {
     delete transaction_pool_[i];
   }
 
@@ -395,7 +443,7 @@ Transaction* TransactionManager::StartWriteTransaction(uint64_t* start_time) {
 Transaction* TransactionManager::AcquireTransaction() {
   std::lock_guard<std::mutex> guard(state_guard_);
   UnguardedReleaseOldTransactions();
-  uint16_t return_index = free_list_.back();
+  Transaction::Id return_index = free_list_.back();
   free_list_.pop_back();
   age_list_.push_back(return_index);
   if (free_list_.empty()) {
@@ -413,7 +461,7 @@ Transaction* TransactionManager::AcquireTransaction() {
     //       At that point, the next time we grow, we break.
     pool_size_ *= 2;
     Transaction** new_transaction_pool = new Transaction*[pool_size_];
-    for (int i = 0, j = return_index; i < return_index; i++, j++) {
+    for (Transaction::Id i = 0, j = return_index; i < return_index; i++, j++) {
       // Taking advantage of pipelining.
       new_transaction_pool[i] = transaction_pool_[i];
       new_transaction_pool[j] = new Transaction(hook_, j);
@@ -429,7 +477,7 @@ bool TransactionManager::Release(Transaction* tx, uint64_t expected_op_time) {
   if (!tx->Reset(expected_op_time)) {
     return false;
   }
-  uint16_t tx_id = tx->id();
+  Transaction::Id tx_id = tx->id();
   free_list_.push_back(tx_id);
   for (auto it = age_list_.begin(); it < age_list_.end(); it++) {
     if (*it == tx_id) {
@@ -448,9 +496,9 @@ void TransactionManager::ReleaseOldTransactions() {
 void TransactionManager::UnguardedReleaseOldTransactions() {
   // Caller should already have state_guard_ locked.
   uint64_t reaper_time = acumio::time::LatestTimeoutTime(reap_timeout_nanos_);
-  uint16_t age_index = 0;
+  Transaction::Id age_index = 0;
   while (age_index < age_list_.size()) {
-    uint16_t tx_id = age_list_[age_index];
+    Transaction::Id tx_id = age_list_[age_index];
     Transaction* tx_to_check = transaction_pool_[tx_id];
     if(tx_to_check->ResetIfOld(reaper_time)) {
       free_list_.push_back(tx_id);
