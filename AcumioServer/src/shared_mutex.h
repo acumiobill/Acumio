@@ -70,6 +70,8 @@ class SharedLock {
  public:
   SharedLock(SharedMutex& mutex);
   ~SharedLock();
+
+  inline SharedMutex& GetMutex() { return mutex_; }
  private:
   SharedMutex& mutex_;
 };
@@ -78,6 +80,8 @@ class ExclusiveLock {
  public:
   ExclusiveLock(SharedMutex& mutex);
   ~ExclusiveLock();
+
+  inline SharedMutex& GetMutex() { return mutex_; }
  private:
   SharedMutex& mutex_;
 };
