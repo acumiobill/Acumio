@@ -54,6 +54,20 @@ template <typename T> struct pointer_less {
     return (left.get() == nullptr) ? (right != nullptr) :
            (right == nullptr ? false : *left < *right);
   }
+  inline bool operator()(const std::shared_ptr<T>& left,
+                         const std::shared_ptr<T>& right) const {
+    return (left.get() == nullptr) ? (right.get() != nullptr) :
+           (right.get() == nullptr ? false : *left < *right);
+  }
+  inline bool operator()(const T* left, const std::shared_ptr<T>& right) const {
+    return (left == nullptr) ? (right.get() != nullptr) :
+           (right.get() == nullptr ? false : *left < *right);
+  }
+  inline bool operator()(const std::shared_ptr<T>& left,
+                         const T* right) const {
+    return (left.get() == nullptr) ? (right != nullptr) :
+           (right == nullptr ? false : *left < *right);
+  }
 };
 } // namespace functional
 } // namespace acumio

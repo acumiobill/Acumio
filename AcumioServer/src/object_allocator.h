@@ -20,16 +20,12 @@
 //               make the value of using this class questionable.
 //
 //               TODO: Allocate chunks of capacity instead of having a single
-//               large capacity block. Basically, we want to have a growing
-//               vector (with initial capacity pretty large) of chunks of
-//               allocation. Targeting a max object count of 4 million is
-//               reasonable in terms of our domain and in terms of memory
-//               consumption - with objects of size 1k, this would be 4G
-//               of memory. To target 4 million, we can allocate blocks
-//               of size 2048 and have a capacity of 2048 blocks. The total
+//               large capacity block. See the TODO comment in the private
+//               member variables section.
 //               possible allocation would then be 2048*2048 =~ 4 million.
 //============================================================================
 
+#include <stack>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -82,8 +78,8 @@ class ObjectAllocator {
   // returned. Otherwise, the return is the total reference count after
   // we add one more for the current request.
   //
-  // The operation is undefined if position is greater than the size
-  // of the 
+  // The operation is undefined if position does not refer to an actual
+  // object.
   uint16_t AddReference(uint32_t position) {
     if (position >= reference_counts_.size()) {
       return 0;
@@ -142,6 +138,20 @@ class ObjectAllocator {
   }
 
  private:
+  // TODO: Modify elements_ and reference_counts_ to:
+  //  std::vector<std::vector<EltType>> elements_ and
+  //  std::vector<std::vector<uint16_t>> reference_counts_ respectively.
+  // Currently, we reserve an initial vector size, and rely on standard
+  // vector growth to handle capacity. The idea with the double vectoring
+  // is to have an initial capacity of V vectors, and each of the vectors
+  // could be allowed to reserve initially 1 element, but when growth is
+  // needed, it could reserve M elements. This will allow for V*M elements
+  // before needing to worry about re-allocation.
+  // M should be large enough to give efficiency but small enough that we
+  // won't get into trouble with memory fragmentation. Setting V and M
+  // to 2048 each allows for approx. 4 million elements total. The downside
+  // of this approach is that references to the elements will require
+  // an extra pointer hop.
   std::vector<EltType> elements_;
   std::vector<uint16_t> reference_counts_;
   std::stack<uint32_t> free_list_;
@@ -150,5 +160,5 @@ class ObjectAllocator {
 } // namespace collection
 } // namespace acumio
 
-#endif // AcumioServer_string_allocator_h
+#endif // AcumioServer_object_allocator_h
 

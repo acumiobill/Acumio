@@ -169,7 +169,7 @@
 //
 //               As a result of premise 4, we internally model an additional
 //               stage over the usual set of transaction stages - the
-//               COMPLETING_WRITE state. The idea is that we want a single
+//               COMPLETING_WRITE state. The idea is that we want an atomic
 //               piece of data to modify to transition the state of all
 //               data changes. The natural way to do this is to modify
 //               the transaction itself. This means that concurrent
@@ -199,7 +199,7 @@
 //
 //               Note that all time measurements are provided in nanoseconds,
 //               and absolute time values are given as the number of
-//               nanoseconds since the epoch (Jan 1, 1970 12:00 am). See
+//               nanoseconds since the epoch (Jan 1, 1970 12:00 am GMT). See
 //               time_util.h
 //
 //               Race Conditions:
@@ -227,7 +227,7 @@
 #include <atomic>
 #include <cstdint>
 #include <mutex>
-#include <stack>
+#include <vector>
 #include "test_hooks.h"
 #include "time_util.h"
 
@@ -333,6 +333,8 @@ class Transaction {
     // When we get past this next loop, we will know that the returned
     // op_complete_time had the value that it now has before and
     // after we loaded the rest of the data content for the transaction.
+    // Note that operation_complete_time_ is denoted as volatile, so that
+    // the optimizer does not optimize-away this while-loop check.
     while (*op_complete_time != operation_complete_time_) {
       *op_complete_time = operation_complete_time_;
       *base_info = info_.load();
@@ -358,11 +360,21 @@ class Transaction {
 
   const acumio::test::TestHook<Transaction*>* hook_;
   Id id_;
-  // TODO: Consider how to atomically update info_ along with
-  // operation_complete_time_. It seems that there may be an issue
-  // with using std::atomic on structs with more than 128 bits.
-  uint64_t operation_complete_time_;
+  // Note that GetAtomicInfo will get *both* of these items atomically.
+  // We don't put them into a single std::atomic because std::atomic on
+  // structs will not work with more than 128 bits.
+  volatile uint64_t operation_complete_time_;
   std::atomic<AtomicInfo> info_;
+};
+
+// Use this to hold sets of Transaction* values. When comparing two
+// pointers, we want to compare the Ids of the referenced Transactions.
+struct TxPointerLess {
+  inline bool operator()(const Transaction* left,
+                         const Transaction* right) const {
+    return (left == nullptr) ? (right != nullptr) :
+           (right == nullptr ? false : left->id() < right->id());
+  }
 };
 
 class ReadTransaction {
@@ -390,80 +402,20 @@ class ReadTransaction {
 class WriteTransaction {
  public:
 
-  // We will specialize this TrackingState class in our applications.
-  // The intent is that we will created derived classes then pass in
-  // pointers to TrackingState instances.
-  // The tracking state will usually be a mechanism to reference what
-  // has been changed by the transaction, so that we can efficiently
-  // perform Completion or Rollback operations.
-  class TrackingState {
-    public:
-     virtual ~TrackingState();
-
-    protected:
-     TrackingState();
-  };
-
   typedef std::function<grpc::Status(const Transaction*)> OpFunction;
-  typedef std::function<grpc::Status(const Transaction*,
-                                     TrackingState*)> TrackingOpFunction;
-  struct VariantOpFunction {
-    VariantOpFunction() : op(), tracking_op(), use_tracking(false) {}
-    VariantOpFunction(OpFunction fn) : op(fn), tracking_op(),
-        use_tracking(false) {}
-    VariantOpFunction(TrackingOpFunction fn) : op(), tracking_op(fn),
-        use_tracking(true) {}
-    OpFunction op;
-    TrackingOpFunction tracking_op;
-    bool use_tracking;
-  };
 
-  typedef std::function<grpc::Status(const Transaction*,
-                                     uint64_t)> CompletionFunction;
-  typedef std::function<void(const Transaction*,
-                             TrackingState*,
-                             uint64_t)> TrackingCompletionFunction;
-  struct VariantCompletionFunction {
-    VariantCompletionFunction() : completion(), tracking_completion(),
-        use_tracking(false) {}
-    VariantCompletionFunction(CompletionFunction fn) : completion(fn),
-        tracking_completion(), use_tracking(false) {}
-    VariantCompletionFunction(TrackingCompletionFunction fn) : completion(),
-        tracking_completion(fn), use_tracking(true) {}
-    CompletionFunction completion;
-    TrackingCompletionFunction tracking_completion;
-    bool use_tracking;
-  };
+  typedef std::function<void(const Transaction*)> CompletionFunction;
 
-  typedef std::function<void(const Transaction*,
-                             uint64_t)> RollbackFunction;
-  typedef std::function<void(const Transaction*,
-                             TrackingState*,
-                             uint64_t)> TrackingRollbackFunction;
-  struct VariantRollbackFunction {
-    VariantRollbackFunction() : rollback(), tracking_rollback(),
-        use_tracking(false) {}
-    VariantRollbackFunction(RollbackFunction fn) : rollback(fn),
-        tracking_rollback(), use_tracking(false) {}
-    VariantRollbackFunction(TrackingRollbackFunction fn) : rollback(),
-        tracking_rollback(fn), use_tracking(true) {}
-    RollbackFunction rollback;
-    TrackingRollbackFunction tracking_rollback;
-    bool use_tracking;
-  };
+  typedef std::function<void(const Transaction*)> RollbackFunction;
 
-  WriteTransaction(TransactionManager& manager, TrackingState* state);
+  WriteTransaction(TransactionManager& manager);
   WriteTransaction(TransactionManager& manager,
-                   TrackingState* state,
                    Transaction* started_transaction);
   ~WriteTransaction();
   
   void AddOperation(OpFunction op,
                     CompletionFunction completion,
                     RollbackFunction rollback);
-  void AddOperation(TrackingOpFunction op,
-                    TrackingCompletionFunction completion,
-                    TrackingRollbackFunction rollback);
   grpc::Status Commit();
   bool Release();
 
@@ -475,12 +427,11 @@ class WriteTransaction {
   grpc::Status HandleTimeoutDuringCommit(int last_success_index);
 
   TransactionManager& manager_;
-  TrackingState* state_;
   Transaction* tx_;
   uint64_t write_start_time_;
-  std::vector<VariantOpFunction> ops_;
-  std::vector<VariantCompletionFunction> completions_;
-  std::vector<VariantRollbackFunction> rollbacks_;
+  std::vector<OpFunction> ops_;
+  std::vector<CompletionFunction> completions_;
+  std::vector<RollbackFunction> rollbacks_;
   bool done_;
 };
 
@@ -553,6 +504,7 @@ class TransactionManager {
   // ReleaseOldTransactions().
   void UnguardedReleaseOldTransactions();
 
+  // TODO: Replace this with home-made exclusive mutex class.
   std::mutex state_guard_;
   Transaction** transaction_pool_;
   uint16_t pool_size_;

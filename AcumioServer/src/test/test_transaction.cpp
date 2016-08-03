@@ -77,12 +77,11 @@ class TestTxAware {
 
   ~TestTxAware() {}
 
-  grpc::Status SetValue(uint32_t new_value, const Transaction* tx,
-                        WriteTransaction::TrackingState* unused) {
+  grpc::Status SetValue(uint32_t new_value, const Transaction* tx) {
     if (new_value == 17) {
-      // Okay, this is kind of fake. However, it is possible for some
-      // values to be rejected based on various conditions, and we
-      // should account for that.
+      // Okay, this is kind of fake (failing for the value 17). However, it is
+      // possible for some values to be rejected based on various conditions,
+      // and we should account for that.
       return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "");
     }
     Transaction::AtomicInfo tx_new_info = tx->GetAtomicInfo();
@@ -158,30 +157,26 @@ class TestTxAware {
     return grpc::Status::OK;
   }
 
-  void CompleteWriteOperation(const Transaction* tx,
-                              WriteTransaction::TrackingState* unused,
-                              uint64_t write_start) {
+  void CompleteWriteOperation(const Transaction* tx) {
     uint64_t complete_time;
     Transaction::AtomicInfo tx_info;
     tx->GetAtomicInfo(&tx_info, &complete_time);
     
     std::lock_guard<std::mutex> edit_lock(edit_guard_);
-    if (edit_version_.edit_start_time == write_start) {
+    if (edit_version_.edit_start_time == tx_info.operation_start_time) {
       std::lock_guard<std::mutex> version_lock(versions_guard_);
       PushEditVersion(complete_time);
       ClearEditVersion();
     }
   }
 
-  void RollbackEdit(const Transaction* tx,
-                    WriteTransaction::TrackingState* unused,
-                    uint64_t write_start) {
+  void RollbackEdit(const Transaction* tx) {
     uint64_t complete_time;
     Transaction::AtomicInfo tx_info;
     tx->GetAtomicInfo(&tx_info, &complete_time);
     
     std::lock_guard<std::mutex> edit_lock(edit_guard_);
-    if (edit_version_.edit_start_time == write_start) {
+    if (edit_version_.edit_start_time == tx_info.operation_start_time) {
       ClearEditVersion();
     }
   }
@@ -231,65 +226,47 @@ class TestTxAware {
   EditVersion edit_version_;
 };
 
-WriteTransaction::TrackingOpFunction SetValueCallback(TestTxAware& item,
-                                                      uint32_t value) {
+WriteTransaction::OpFunction SetValueCallback(TestTxAware& item,
+                                              uint32_t value) {
   return std::bind(&TestTxAware::SetValue,
                    &item,
                    value,
-                   std::placeholders::_1,
-                   std::placeholders::_2);
+                   std::placeholders::_1);
 }
 
-grpc::Status TxSleepNanos(const Transaction* ignore,
-                          WriteTransaction::TrackingState* ignore2,
-                          uint64_t nanos) {
+grpc::Status TxSleepNanos(const Transaction* ignore, uint64_t nanos) {
   acumio::time::SleepNanos(nanos);
   return grpc::Status::OK;
 }
 
-void TxNoOp(const Transaction* ignore,
-            WriteTransaction::TrackingState* ignore2,
-            uint64_t also_ignore) {
+void TxNoOp(const Transaction* ignore) {
   return;
 }
 
-WriteTransaction::TrackingOpFunction SleepNoOpCallback(uint64_t nanos) {
-  return std::bind(TxSleepNanos,
-                   std::placeholders::_1,
-                   std::placeholders::_2,
-                   nanos);
+WriteTransaction::OpFunction SleepNoOpCallback(uint64_t nanos) {
+  return std::bind(TxSleepNanos, std::placeholders::_1, nanos);
 }
 
-WriteTransaction::TrackingCompletionFunction CompleteWriteCallback(
-    TestTxAware& item) {
+WriteTransaction::CompletionFunction CompleteWriteCallback(TestTxAware& item) {
   return std::bind(&TestTxAware::CompleteWriteOperation,
                    &item,
-                   std::placeholders::_1,
-                   std::placeholders::_2,
-                   std::placeholders::_3);
+                   std::placeholders::_1);
 }
 
-WriteTransaction::TrackingCompletionFunction CompleteNoOpCallback() {
+WriteTransaction::CompletionFunction CompleteNoOpCallback() {
   return std::bind(TxNoOp,
-                   std::placeholders::_1,
-                   std::placeholders::_2,
-                   std::placeholders::_3);
+                   std::placeholders::_1);
 }
 
-WriteTransaction::TrackingRollbackFunction RollbackCallback(
-    TestTxAware& item) {
+WriteTransaction::RollbackFunction RollbackCallback(TestTxAware& item) {
   return std::bind(&TestTxAware::RollbackEdit,
                    &item,
-                   std::placeholders::_1,
-                   std::placeholders::_2,
-                   std::placeholders::_3);
+                   std::placeholders::_1);
 }
 
-WriteTransaction::TrackingRollbackFunction RollbackNoOpCallback() {
+WriteTransaction::RollbackFunction RollbackNoOpCallback() {
   return std::bind(TxNoOp,
-                   std::placeholders::_1,
-                   std::placeholders::_2,
-                   std::placeholders::_3);
+                   std::placeholders::_1);
 }
 
 class SleepyTxTestHook : public acumio::test::TestHook<Transaction*> {
@@ -411,9 +388,9 @@ TEST(TransactionTest, CompareExchangeTest) {
 TEST(TransactionTest, NoOpWriteTransactionTest) {
   acumio::test::TestHook<Transaction*> hook;
   TransactionManager manager(16, one_second, 2 * one_second, &hook);
-  WriteTransaction tx(manager, nullptr);
+  WriteTransaction tx(manager);
   EXPECT_OK(tx.Commit());
-  WriteTransaction tx2(manager, nullptr);
+  WriteTransaction tx2(manager);
   EXPECT_OK(tx2.Commit());
 }
 
@@ -422,7 +399,7 @@ TEST(TransactionTest, SimpleWriteTransactionTest) {
   TransactionManager manager(16, one_second, 2 * one_second, &hook);
   TestTxAware item1(manager.get_reap_timeout_nanos(), 0);
   TestTxAware item2(manager.get_reap_timeout_nanos(), 0);
-  WriteTransaction tx(manager, nullptr);
+  WriteTransaction tx(manager);
   tx.AddOperation(SetValueCallback(item1, 1),
                   CompleteWriteCallback(item1),
                   RollbackCallback(item1));
@@ -443,7 +420,7 @@ TEST(TransactionTest, WriteTransactionRollbackTest) {
   TransactionManager manager(16, one_second, 2 * one_second, &hook);
   TestTxAware item1(manager.get_reap_timeout_nanos(), 0);
   TestTxAware item2(manager.get_reap_timeout_nanos(), 0);
-  WriteTransaction tx(manager, nullptr);
+  WriteTransaction tx(manager);
   tx.AddOperation(SetValueCallback(item1, 1),
                   CompleteWriteCallback(item1),
                   RollbackCallback(item1));
@@ -493,7 +470,7 @@ TEST(TransactionTest, TransactionTimeoutTest) {
                              &hook);
   TestTxAware item1(manager.get_reap_timeout_nanos(), 0);
   TestTxAware item2(manager.get_reap_timeout_nanos(), 0);
-  WriteTransaction tx(manager, nullptr);
+  WriteTransaction tx(manager);
   tx.AddOperation(SleepNoOpCallback(300 * one_microsecond),
                   CompleteNoOpCallback(),
                   RollbackNoOpCallback());
@@ -508,7 +485,7 @@ TEST(TransactionTest, TransactionTimeoutTest) {
   EXPECT_EQ(0, item1.IthVersionValueUnsafe(0));
   ASSERT_EQ(1, item2.VersionCountUnsafe());
   EXPECT_EQ(0, item2.IthVersionValueUnsafe(0));
-  WriteTransaction tx2(manager, nullptr);
+  WriteTransaction tx2(manager);
   tx2.AddOperation(SetValueCallback(item1, 1),
                    CompleteWriteCallback(item1),
                    RollbackCallback(item1));
@@ -523,7 +500,7 @@ TEST(TransactionTest, TransactionTimeoutTest) {
   EXPECT_EQ(0, item1.IthVersionValueUnsafe(0));
   ASSERT_EQ(1, item2.VersionCountUnsafe());
   EXPECT_EQ(0, item2.IthVersionValueUnsafe(0));
-  WriteTransaction tx3(manager, nullptr);
+  WriteTransaction tx3(manager);
   tx3.AddOperation(SetValueCallback(item1, 1),
                    CompleteWriteCallback(item1),
                    RollbackCallback(item1));
@@ -538,7 +515,7 @@ TEST(TransactionTest, TransactionTimeoutTest) {
   EXPECT_EQ(0, item1.IthVersionValueUnsafe(0));
   ASSERT_EQ(1, item2.VersionCountUnsafe());
   EXPECT_EQ(0, item2.IthVersionValueUnsafe(0));
-  WriteTransaction tx4(manager, nullptr);
+  WriteTransaction tx4(manager);
   tx4.AddOperation(SetValueCallback(item1, 1),
                    CompleteWriteCallback(item1),
                    RollbackCallback(item1));
@@ -566,7 +543,7 @@ TEST(TransactionTest, BadTimingTests) {
   ReadTransaction tx2(manager);
   EXPECT_OK(tx.Commit());
   acumio::time::SleepNanos(300 * one_microsecond);
-  WriteTransaction tx3(manager, nullptr);
+  WriteTransaction tx3(manager);
   tx3.AddOperation(SetValueCallback(item1, 1),
                    CompleteWriteCallback(item1),
                    RollbackCallback(item1));

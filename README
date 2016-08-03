@@ -124,6 +124,22 @@ build the target "all_tests" (i.e., "make all_tests"). This will generate
 a series of .exe files in the test_objs directory.
 
 TODO (In rough priority order):
+	* Update Data model to reflect Versioning and Object-Id sequencing.
+		The data model should also reflect how to calculate and
+		define storage for the Trust model scores.
+	* Trivial Thread-Safety.
+		We should be able to get thread safety by using the trivial
+		SharedMutex class that I wrote earlier. This will protect
+		the maps using a bit of a sledgehammer approach, but for
+		trickle-feed throughput, it will be fine.
+	* Finish TxAwareBurstTrie. Currently, it is entirely stubs.
+		Currently, this class is all stubs. Need to generate
+		the main class itself as well as its iterators. In addition,
+		need to create TxManagedMapFactory classes for
+		TxAwareBurstTrie and for TxAwareFlatMap classes so that they
+		can be used by TxAwareTrieNode.
+		In addition, all of this needs to be tested. Current
+		implementations are not tested.
 	* Unit Tests!!
 		Test infrastructure and build process are now in place,
 		but we have only begun developing the actual tests.
@@ -131,11 +147,20 @@ TODO (In rough priority order):
 		possible additional tests to consider, but for now, we should
 		just focus on these before moving on.
 		Sub Tasks:
+		* Test rope_piece.cpp
+		* Test iterators.h
+		* Test object_allocator.h
+		* Test flat_map.h
+		* Test tx_aware_flat_map.cpp
+		* Test tx_managed_map.cpp
+		* Test tx_aware_trie_node.h
+		* Test tx_aware_burst_trie.h
 		* Test dataset_repository.cpp
 		* Test UserService.cpp
 		* Test NamespaceService.cpp
 		* Test RepositoryService.cpp
 		* Test DatasetService.cpp
+	* Integrate TxAwareBurstTrie
 	* Make Thread Safe
 		The underlying MemRepository class
 		(AcumioServer/src/mem_repository.h)
@@ -166,12 +191,6 @@ TODO (In rough priority order):
 		different requirements than the other content: we
 		will eventually *not* want to keep this in-memory except
 		for a memory-limited LRU Cache.
-	* Fix some "Code Smells"
-                This is just code cleanup.  Sub-tasks:
-                   * Fix methods that exceed 40~50 lines.
-                   * Make variable and method names consistent across classes.
-                     (Some of this might happen in the course of operations
-                      listed above).
 	* Integrate with Web Front End
 		Targeting the use of Angular2 with Node.js/javascript.
 	* Add Retrievable and queryable Audit logging.

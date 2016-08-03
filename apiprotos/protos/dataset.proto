@@ -293,7 +293,7 @@ message Dataset {
   Discovery discovery = 20;
 }
 
-// When providing descriptions for Datasets, we will use MultiDescrpitions.
+// When providing descriptions for Datasets, we will use MultiDescriptions.
 // a single tag with the string equal to the shortname of the Dataset
 // is used to describe the overall Dataset.
 // Assuming a single RelationalType the keys are formed as the name

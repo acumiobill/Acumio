@@ -10,10 +10,7 @@
 #include <atomic>
 #include <cstdint> // needed for UINT64_C(x) macro.
 
-// iostream is ~sed for std::cout. Comment-out when not debugging.
-// Usually, commented-out code is a bad sign, but mostly okay if we use it
-// frequently on a temporary basis.
-// #include <iostream>
+// #include <iostream> // allows std::cout. Comment out when not debugging.
 #include <mutex>
 #include <sstream>
 
@@ -223,47 +220,24 @@ ReadTransaction::~ReadTransaction() {
   }
 }
 
-WriteTransaction::TrackingState::TrackingState() {}
-WriteTransaction::TrackingState::~TrackingState() {}
-
-WriteTransaction::WriteTransaction(TransactionManager& manager,
-                                   WriteTransaction::TrackingState* state) :
-    manager_(manager), state_(state), tx_(nullptr),
-    write_start_time_(UINT64_C(0)), ops_(), completions_(),
-    rollbacks_(), done_(false) {
+WriteTransaction::WriteTransaction(TransactionManager& manager) :
+    manager_(manager), tx_(nullptr), write_start_time_(UINT64_C(0)), ops_(),
+    completions_(), rollbacks_(), done_(false) {
   tx_ = manager.StartWriteTransaction(&write_start_time_);
 }
 
-WriteTransaction::WriteTransaction(
-    TransactionManager& manager,
-    WriteTransaction::TrackingState* state,
-    Transaction* tx) :
-    manager_(manager), state_(state), tx_(tx),
-    write_start_time_(tx->operation_start_time()), ops_(), completions_(),
-    rollbacks_(), done_(false) {}
+WriteTransaction::WriteTransaction(TransactionManager& manager,
+                                   Transaction* tx) :
+    manager_(manager), tx_(tx), write_start_time_(tx->operation_start_time()),
+    ops_(), completions_(), rollbacks_(), done_(false) {}
 
 void WriteTransaction::AddOperation(
     WriteTransaction::OpFunction op,
     WriteTransaction::CompletionFunction completion,
     WriteTransaction::RollbackFunction rollback) {
-  VariantOpFunction var_op(op);
-  VariantCompletionFunction var_completion(completion);
-  VariantRollbackFunction var_rollback(rollback);
-  ops_.push_back(var_op);
-  completions_.push_back(var_completion);
-  rollbacks_.push_back(var_rollback);
-}
-
-void WriteTransaction::AddOperation(
-    WriteTransaction::TrackingOpFunction op,
-    WriteTransaction::TrackingCompletionFunction completion,
-    WriteTransaction::TrackingRollbackFunction rollback) {
-  VariantOpFunction var_op(op);
-  VariantCompletionFunction var_completion(completion);
-  VariantRollbackFunction var_rollback(rollback);
-  ops_.push_back(var_op);
-  completions_.push_back(var_completion);
-  rollbacks_.push_back(var_rollback);
+  ops_.push_back(op);
+  completions_.push_back(completion);
+  rollbacks_.push_back(rollback);
 }
 
 WriteTransaction::~WriteTransaction() {
@@ -313,9 +287,7 @@ grpc::Status WriteTransaction::HandleFailDuringCommit(
   }
 
   for (int j = failed_op_index-1; j >= 0; j--) {
-    rollbacks_[j].use_tracking ?
-        rollbacks_[j].tracking_rollback(tx_, state_, write_start_time_) :
-        rollbacks_[j].rollback(tx_, write_start_time_);
+    rollbacks_[j](tx_);
   }
   if (requires_release) {
     manager_.Release(tx_, write_start_time_);
@@ -329,9 +301,7 @@ grpc::Status WriteTransaction::HandleTimeoutDuringCommit(
   grpc::Status result = grpc::Status(grpc::StatusCode::DEADLINE_EXCEEDED,
                                      "Transaction timed out.");
   for (int j = last_success_index; j >= 0; j--) {
-    rollbacks_[j].use_tracking ?
-        rollbacks_[j].tracking_rollback(tx_, state_, write_start_time_) :
-        rollbacks_[j].rollback(tx_, write_start_time_);
+    rollbacks_[j](tx_);
   }
   manager_.Release(tx_, write_start_time_);
   done_ = true;
@@ -356,8 +326,7 @@ grpc::Status WriteTransaction::Commit() {
   uint64_t timeout = write_start_time_ + manager_.get_timeout_nanos();
 
   for (uint16_t i = 0; i < ops_.size(); i++) {
-    result = ops_[i].use_tracking ? ops_[i].tracking_op(tx_, state_)
-                                  : ops_[i].op(tx_);
+    result = ops_[i](tx_);
     uint64_t current_nanos = acumio::time::TimerNanosSinceEpoch();
     if (! result.ok()) {
       return HandleFailDuringCommit(result, timeout, current_nanos, i);
@@ -369,9 +338,7 @@ grpc::Status WriteTransaction::Commit() {
 
   if (!tx_->StartWriteComplete(write_start_time_)) {
     for (int j = ops_.size() - 1; j >= 0; j--) {
-      rollbacks_[j].use_tracking ?
-          rollbacks_[j].tracking_rollback(tx_, state_, write_start_time_) :
-          rollbacks_[j].rollback(tx_, write_start_time_);
+      rollbacks_[j](tx_);
     }
     manager_.Release(tx_, write_start_time_);
     std::stringstream error;
@@ -381,11 +348,7 @@ grpc::Status WriteTransaction::Commit() {
   }
 
   for (uint16_t i = 0; i < ops_.size(); i++) {
-    if (completions_[i].use_tracking) {
-      completions_[i].tracking_completion(tx_, state_, write_start_time_);
-    } else {
-      completions_[i].completion(tx_, write_start_time_);
-    }
+    completions_[i](tx_);
   }
 
   manager_.Release(tx_, write_start_time_);

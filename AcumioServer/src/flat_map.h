@@ -27,6 +27,8 @@
 #include <memory>
 #include <stack>
 #include <string.h>
+#include "iterators.h"
+#include "tx_managed_map.h"
 #include "object_allocator.h"
 #include "string_allocator.h"
 
@@ -36,18 +38,11 @@ namespace collection {
 template <typename EltType>
 class FlatMap {
  public:
-  struct IteratorElement {
-    IteratorElement(const char* k, uint32_t v) : key(k), value(v) {}
-    IteratorElement() : IteratorElement(nullptr, UINT32_C(0)) {}
-    const char* key;
-    uint32_t value;
-  };
-
-  class Iterator  :
-      public std::iterator<std::bidirectional_iterator_tag, IteratorElement> {
+  class Iterator : public BasicIterator<MapIterElement> {
    public:
-    Iterator(const FlatMap* container, uint8_t node_id) : container_(container),
-        node_id_(node_id), saved_tmp_(nullptr), saved_val_(nullptr) {}
+    Iterator(const FlatMap* container, uint8_t node_id) :
+        BasicIterator(), container_(container), node_id_(node_id),
+        saved_tmp_(nullptr), saved_val_(nullptr) {}
 
     // Note that Iterator is unusable with null container.
     Iterator() : Iterator(nullptr, 0) {}
@@ -57,18 +52,22 @@ class FlatMap {
 
     ~Iterator() {}
 
+    BasicIterator<MapIterElement>* Clone() const {
+      return new Iterator(*this);
+    }
+
     // pre-increment/decrement
-    Iterator& operator++() {
+    BasicIterator<MapIterElement>& operator++() {
       node_id_++;
-      if (node_id_ > container_.size()) {
-        node_id_ = container_.size();
+      if (node_id_ > container_->size()) {
+        node_id_ = container_->size();
       }
       return *this;
     }
 
-    Iterator& operator--() {
+    BasicIterator<MapIterElement>& operator--() {
       if (node_id_ == 0) {
-        node_id_ = container_.size();
+        node_id_ = container_->size();
       } else {
         node_id_--;
       }
@@ -76,53 +75,51 @@ class FlatMap {
     }
 
     // post-increment/decrement
-    Iterator& operator++(int) {
+    BasicIterator<MapIterElement>& operator++(int) {
       saved_tmp_.reset(new Iterator(*this));
       node_id_++;
-      if (node_id_ > container_.size()) {
-        node_id_ = container_.size();
+      if (node_id_ > container_->size()) {
+        node_id_ = container_->size();
       }
       return *saved_tmp_;
     }
 
-    Iterator& operator--(int) {
+    BasicIterator<MapIterElement>& operator--(int) {
       saved_tmp_.reset(new Iterator(*this));
       if (node_id_ == 0) {
-        node_id_ = container_.size();
+        node_id_ = container_->size();
       } else {
         node_id_--;
       }
       return *saved_tmp_;
     }
 
-    bool operator==(const Iterator& other) const {
-      return container_ == other.container_ && node_id_ == other.node_id_;
+    bool operator==(const BasicIterator<MapIterElement>& other) const {
+      const Iterator* other_iter = dynamic_cast<const Iterator*>(&other);
+      return (other_iter != nullptr &&
+              container_ == other_iter->container_ &&
+              node_id_ == other_iter->node_id_);
     }
 
-    bool operator!=(const Iterator& other) const {
-      return container_ != other.container_ || node_id_ != other.node_id_;
-    }
-
-    IteratorElement operator*() {
-      IteratorElement t;
-      if (node_id_ >= container_->size()) {
-        t.key = nullptr;
-        t.value = 0;
-        return t;
-      }
-      t.key = container_->GetKey(node_id_);
-      t.value = container_->GetValue(node_id_);
-      return t;
-    }
-
-    const IteratorElement* operator->() {
+    const MapIterElement& operator*() const {
       const char* key = nullptr;
       uint32_t value = 0;
-      if (node_id_ < size_) {
+      if (node_id_ < container_->size()) {
         key = container_->GetKey(node_id_);
-        value = container_->GeValue(node_id_);
+        value = container_->GetValue(node_id_);
       }
-      saved_val_.reset(new IteratorElement(key, value));
+      saved_val_.reset(new MapIterElement(key, value));
+      return *saved_val_;
+    }
+
+    const MapIterElement* operator->() const {
+      const char* key = nullptr;
+      uint32_t value = 0;
+      if (node_id_ < container_->size()) {
+        key = container_->GetKey(node_id_);
+        value = container_->GetValue(node_id_);
+      }
+      saved_val_.reset(new MapIterElement(key, value));
       return saved_val_.get();
     }
 
@@ -130,7 +127,7 @@ class FlatMap {
     const FlatMap* container_;
     uint8_t node_id_;
     std::unique_ptr<Iterator> saved_tmp_;
-    std::unique_ptr<IteratorElement> saved_val_;
+    mutable std::unique_ptr<MapIterElement> saved_val_;
   };
 
   // Undefined if map_size > 0 and either allocator is null.
@@ -141,9 +138,10 @@ class FlatMap {
   // FlatMaps of the given EltType.
   FlatMap(StringAllocator* key_allocator,
           ObjectAllocator<EltType>* object_allocator,
-          uint8_t max_size, bool allow_dups) : key_allocator_(key_allocator),
-      object_allocator_(object_allocator), max_size_(max_size), size_(0),
-      allow_dups_(allow_dups), keys_(nullptr), values_(nullptr) {
+          uint8_t max_size, bool allow_duplicates) :
+      key_allocator_(key_allocator), object_allocator_(object_allocator),
+      max_size_(max_size), size_(0), allow_duplicates_(allow_duplicates),
+      keys_(nullptr), values_(nullptr) {
     if (max_size_ > 0) {
       keys_ = new uint16_t[max_size_];
       values_ = new uint32_t[max_size_];
@@ -155,7 +153,8 @@ class FlatMap {
   FlatMap(const FlatMap& other) : key_allocator_(other.key_allocator_),
       object_allocator_(other.object_allocator_),
       max_size_(other.max_size_), size_(other.size_),
-      allow_dups_(other.allow_dups_), keys_(nullptr), values_(nullptr) {
+      allow_duplicates_(other.allow_duplicates_), keys_(nullptr),
+      values_(nullptr) {
     if (max_size_ > 0) {
       keys_ = new uint16_t[max_size_];
       values_ = new uint32_t[max_size_];
@@ -187,14 +186,15 @@ class FlatMap {
   //      key_allocator_->StringAt(key_pos)
   //    }
   //
-  //    The above assumes !allow_dups, but is similar of allow_dups
+  //    The above assumes !allow_duplicates, but is similar of allow_dups
   //    is true.
   FlatMap(const FlatMap& other, uint16_t key_pos, uint32_t value_pos,
       uint8_t new_elt_pos) :
       key_allocator_(other.key_allocator_),
       object_allocator_(other.object_allocator_),
       max_size_(other.max_size_), size_(other.size_ + 1),
-      allow_dups_(other.allow_dups_), keys_(nullptr), values_(nullptr) {
+      allow_duplicates_(other.allow_duplicates_), keys_(nullptr),
+      values_(nullptr) {
     keys_ = new uint16_t[max_size_];
     values_ = new uint32_t[max_size_];
     for (uint8_t i = new_elt_pos - 1; i > 0; i--) {
@@ -213,7 +213,8 @@ class FlatMap {
     key_allocator_(other.key_allocator_),
     object_allocator_(other.object_allocator_),
     max_size_(other.max_size_), size_(other.size_),
-    allow_dups_(other.allow_dups_), keys_(nullptr), values_(nullptr) {
+    allow_duplicates_(other.allow_duplicates_), keys_(nullptr),
+    values_(nullptr) {
     if (size_ > removed_pos) {
       size_--;
     }
@@ -248,15 +249,23 @@ class FlatMap {
     return key_allocator_->StringAt(keys_[position]);
   }
 
-  inline const EltType& GetValue(uint8_t position) const {
+  inline const EltType& GetValue(uint32_t allocated_position) const {
+    return object_allocator_->ObjectAt(allocated_position);
+  }
+
+  inline EltType& GetModifiableValue(uint32_t allocated_position) {
+    return object_allocator_->ModifiableObjectAt(allocated_position);
+  }
+
+  inline const EltType& GetValueByInternalPosition(uint8_t position) const {
     return object_allocator_->ObjectAt(values_[position]);
   }
 
-  inline EltType& GetModifiableValue(uint8_t position) {
+  inline EltType& GetModifiableValueByInternalPosition(uint8_t position) {
     return object_allocator_->ModifiableObjectAt(values_[position]);
   }
 
-  uint8_t GetPosition(const char* key, bool* matches_key) const {
+  uint8_t GetInternalPosition(const char* key, bool* matches_key) const {
     if (size_ == 0) {
       return 0;
     }
@@ -305,11 +314,11 @@ class FlatMap {
     return upper_bound;
   }
 
-  // This should be invoked when allow_dups_ is true. In this case, we
+  // This should be invoked when allow_duplicates_ is true. In this case, we
   // break ties using value_pos, but still do not *truly* allow dups
   // with respect to the combination of key and value_pos.
-  uint8_t GetPosition(const char* key, uint32_t value_pos,
-                      bool* matches_key) const {
+  uint8_t GetInternalPosition(const char* key, uint32_t value_pos,
+                              bool* matches_key) const {
     if (size_ == 0) {
       return 0;
     }
@@ -386,31 +395,31 @@ class FlatMap {
   }
 
   // Returns nullptr if key does not match an existing entry.
-  // Otherwise, returns pointer to unmodifiable value. If there
-  // is more than one possible key that matches (such as if we allow dups),
-  // this will return one of the entries, but no guarantee which one.
+  // Otherwise, returns pointer to unmodifiable value. If there is more than
+  // one possible key that matches (such as if we allow duplicates), this will
+  // return one of the entries, but no guarantee which one.
   const EltType* Get(const char* key) const {
     bool found = false;
-    uint8_t pos = GetPosition(key, &found);
+    uint8_t pos = GetInternalPosition(key, &found);
     if (!found) {
       return nullptr;
     }
-    return &(GetValue(pos));
+    return &(GetValueByInternalPosition(pos));
   }
 
   // Returns nullptr if key does not match an existing entry.
   // Otherwise, returns pointer to unmodifiable value.
   EltType* GetModifiable(const char* key) {
     bool found = false;
-    uint8_t pos = GetPosition(key, &found);
+    uint8_t pos = GetInternalPosition(key, &found);
     if (!found) {
       return nullptr;
     }
-    return &(GetModifiableValue(pos));
+    return &(GetModifiableValueByInternalPosition(pos));
   }
 
   uint16_t GetKeyPosition(const char* key, bool* exists) const {
-    uint8_t pos = GetPosition(key, exists);
+    uint8_t pos = GetInternalPosition(key, exists);
     if (!exists) {
       return key_allocator_->max_size();
     }
@@ -418,7 +427,7 @@ class FlatMap {
   }
 
   uint32_t GetValuePosition(const char* key, bool* exists) const {
-    uint8_t pos = GetPosition(key, exists);
+    uint8_t pos = GetInternalPosition(key, exists);
     if (!exists) {
       return object_allocator_->ImpossiblePosition();
     }
@@ -436,8 +445,9 @@ class FlatMap {
     }
 
     bool exists = false;
-    uint8_t pos = (allow_dups_ ? GetPosition(key, value_position, &exists)
-                               : GetPosition(key, &exists));
+    uint8_t pos = (allow_duplicates_ ?
+                   GetInternalPosition(key, value_position, &exists) :
+                   GetInternalPosition(key, &exists));
     if (!exists) {
       return max_size_;
     }
@@ -483,8 +493,9 @@ class FlatMap {
 
     bool exists = false;
     const char* key = key_allocator_->StringAt(key_position);
-    uint8_t pos = (allow_dups_ ? GetPosition(key, value_position, &exists)
-                               : GetPosition(key, &exists));
+    uint8_t pos = (allow_duplicates_ ?
+                   GetInternalPosition(key, value_position, &exists) :
+                   GetInternalPosition(key, &exists));
     if (!exists) {
       return max_size_;
     }
@@ -514,17 +525,18 @@ class FlatMap {
     }
   }
 
-  uint8_t Put(uint16_t key_position, uint32_t value_position) {
+  uint8_t Put(uint16_t key_position, uint32_t allocated_position) {
     bool exists = false;
-    uint8_t pos = (allow_dups_ ?
-                   GetPosition(key_position, value_position, &exists) :
-                   GetPosition(key_position, &exists));
+    uint8_t pos = (allow_duplicates_ ?
+                   GetInternalPosition(key_position, allocated_position,
+                                       &exists) :
+                   GetInternalPosition(key_position, &exists));
     if (exists) {
       uint32_t old_val = values_[pos];
-      if (old_val != value_position) {
+      if (old_val != allocated_position) {
         object_allocator_->DropReference(old_val);
-        object_allocator_->AddReference(value_position);
-        values_[pos] = value_position;
+        object_allocator_->AddReference(allocated_position);
+        values_[pos] = allocated_position;
       }
       return pos;
     }
@@ -538,18 +550,18 @@ class FlatMap {
       values_[i] = values_[i-1];
     }
     keys_[pos] = key_position;
-    values_[pos] = value_position;
+    values_[pos] = allocated_position;
     // We return a reference for the value, but not the keys. The reason
     // to not add the reference for the keys is because it was already
     // created when we did the key_allocator_->Add(key) operation.
-    object_allocator_->AddReference(value_position);
+    object_allocator_->AddReference(allocated_position);
     size_++;
     return pos;
   }
 
   bool Remove(const char* key) {
     bool exists = false;
-    uint8_t pos = GetPosition(key, &exists);
+    uint8_t pos = GetInternalPosition(key, &exists);
     if (!exists) {
       return false;
     }
@@ -569,16 +581,16 @@ class FlatMap {
     return Remove(key_allocator_->StringAt(key_position));
   }
 
-  inline uint8_t Size() const { return size_; }
-  inline uint8_t MaxSize() const { return max_size_; }
-  inline bool AllowsDuplicates() const { return allow_dups_; }
+  inline uint8_t size() const { return size_; }
+  inline uint8_t max_size() const { return max_size_; }
+  inline bool allow_duplicates() const { return allow_duplicates_; }
 
  private:
   StringAllocator* key_allocator_;
   ObjectAllocator<EltType>* object_allocator_;
   uint8_t max_size_;
   uint8_t size_;
-  bool allow_dups_;
+  bool allow_duplicates_;
   uint16_t* keys_;
   uint32_t* values_;
 };

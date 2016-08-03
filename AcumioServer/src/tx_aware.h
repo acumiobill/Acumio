@@ -9,8 +9,10 @@
 //               data structure.
 //============================================================================
 
+#include <stdint.h> // needed for UINT16_C
 #include <vector>
 #include "shared_mutex.h"
+#include "time_util.h"
 #include "transaction.h"
 
 namespace acumio {
@@ -71,7 +73,7 @@ class TxAware {
       SharedLock read_lock(guard_);
       if (current_value_times_.create <= access_time) {
         if (edit_state_time_.state != NOT_EDITING &&
-            edit_state_time_.time < access_time) {
+            edit_state_time_.time <= access_time) {
           // In this case, we should potentially use the value that is the edit
           // value, but only if the transaction is in the COMPLETING_WRITE
           // state, and the edit_state.time matches the transaction's start
@@ -93,48 +95,26 @@ class TxAware {
     return VersionSearch(access_time, exists_at_time);
   }
 
-  grpc::Status Set(const EltType& e, Transaction* tx, uint64_t edit_time) {
+  grpc::Status Set(const EltType& e, const Transaction* tx,
+                   uint64_t edit_time) {
     ExclusiveLock guard(guard_);
     Transaction::AtomicInfo current_tx_info = tx->GetAtomicInfo();
     if (current_tx_info.operation_start_time != edit_time) {
       return grpc::Status(grpc::StatusCode::DEADLINE_EXCEEDED,
         "The transaction timed out before completion.");
     }
-    if (edit_tx_ != nullptr) {
-      Transaction::State edit_state = edit_tx_->state();
-      switch(edit_state) {
-        case Transaction::NOT_STARTED: // Intentional fall-through to next case.
-        case Transaction::READ:
-          break;
-        case Transaction::WRITE:
-          if (edit_tx_ != tx) {
-            return grpc::Status(grpc::StatusCode::ABORTED,
-                                "concurrency exception.");
-          }
-          // re-entering edit of same value. I suppose this is okay...
-          break;
-        case Transaction::COMPLETING_WRITE:
-          CompleteWriteWithGuard(edit_tx_);
-          break;
-        case Transaction::COMMITTED: // Intentional fall-through to next case.
-          // If we reach here, we have probably encountered the cruft of
-          // a previously timed-out transaction where the transaction has
-          // since then been re-purposed and then committed.
-        case Transaction::ROLLED_BACK:
-          break;
-        default: return grpc::Status(grpc::StatusCode::INTERNAL,
-                                     "Coding issue. Did not fix switch.");
-      }
-    }
-    if (edit_time < current_value_times_.create ||
-        (current_value_times_.remove != acumio::time::END_OF_TIME &&
-         edit_time < current_value_times_.remove)) {
-      return grpc::Status(grpc::StatusCode::ABORTED, "concurrency exception.");
+
+    // Note that the verification may contain the side-effect of
+    // cleaning up the edit state if it finds that the current edit state
+    // relates to a defunct transaction.
+    grpc::Status ret_val = VerifyNoConflictingEdits(tx, edit_time);
+    if (!ret_val.ok()) {
+      return ret_val;
     }
     edit_tx_ = tx;
+    edit_value_ = e;
     edit_state_time_.state = SETTING;
     edit_state_time_.time = edit_time;
-    edit_value_ = e;
     return grpc::Status::OK;
   }
 
@@ -145,55 +125,35 @@ class TxAware {
       return grpc::Status(grpc::StatusCode::DEADLINE_EXCEEDED,
         "The transaction timed out before completion.");
     }
-    if (edit_tx_ != nullptr) {
-      Transaction::State edit_state = edit_tx_->state();
-      switch(edit_state) {
-        case Transaction::NOT_STARTED: // Intentional fall-through to next case.
-        case Transaction::READ:
-          break;
-        case Transaction::WRITE:
-          if (edit_tx_ != tx) {
-            return grpc::Status(grpc::StatusCode::ABORTED,
-                                "concurrency exception.");
-          }
-          // re-entering edit of same value. I suppose this is okay...
-          break;
-        case Transaction::COMPLETING_WRITE:
-          CompleteWriteWithGuard(edit_tx_);
-          break;
-        case Transaction::COMMITTED: // Intentional fall-through to next case.
-          // If we reach here, we have probably encountered the cruft of
-          // a previously timed-out transaction where the transaction has
-          // since then been re-purposed and then committed.
-        case Transaction::ROLLED_BACK:
-          break;
-        default: return grpc::Status(grpc::StatusCode::INTERNAL,
-                                     "coding issue. Did not fix switch.");
-      }
+    // Note that the verification may contain the side-effect of
+    // cleaning up the edit state if it finds that the current edit state
+    // relates to a defunct transaction.
+    grpc::Status ret_val = VerifyNoConflictingEdits(tx, edit_time);
+    if (!ret_val.ok()) {
+      return ret_val;
     }
+    edit_tx_ = tx;
     edit_value_ = not_present_value_;
     edit_state_time_.state = REMOVING;
     edit_state_time_.time = edit_time;
   }
 
-  void CompleteWrite(Transaction* tx) {
+  void CompleteWrite(const Transaction* tx) {
     ExclusiveLock guard(guard_);
     CompleteWriteWithGuard(tx);
   }
 
-  void Rollback(Transaction* tx) {
+  void Rollback(const Transaction* tx) {
     ExclusiveLock guard(guard_);
     if (tx != edit_tx_) {
-      return;
-    }
-    Transaction::AtomicInfo tx_info = tx->GetAtomicInfo();
-    if (tx_info.state != Transaction::ROLLED_BACK ||
-        tx_info.operation_start_time != edit_state_time_.time) {
       return;
     }
     ClearEditState();
   }
 
+  // Removes versions if their time-span does not cover clean_time, and if
+  // their time-span comes before clean_time. i.e.:
+  // remove if version.times.remove <= clean_time.
   void CleanVersions(uint64_t clean_time) {
     ExclusiveLock guard(versions_guard_);
     uint16_t version_count = historical_versions_.size();
@@ -214,7 +174,7 @@ class TxAware {
 
  private:
   // Assumes you already have guard_ locked.
-  void CompleteWriteWithGuard(Transaction* tx) {
+  void CompleteWriteWithGuard(const Transaction* tx) {
     if (edit_tx_ != tx) {
       // This is perfectly valid: It might be that another transaction
       // that encountered this TxAware instance when tx was in COMPLETING_WRITE
@@ -233,7 +193,7 @@ class TxAware {
       Version& next_version = historical_versions_[versions_next_];
       next_version.value = current_value_;
       next_version.times.create = current_value_times_.create;
-      next_version.times.remove = edit_state_time_.times.create;
+      next_version.times.remove = edit_state_time_.time;
       versions_next_++;
       if (versions_next_ == historical_versions_.size()) {
         versions_next_ = 0;
@@ -266,8 +226,8 @@ class TxAware {
   }
 
   void IncreaseVersionsBufferIfNeeded() {
-    uint16_t version_count = VersionCount();
-    if (version_count + 1 < historical_versions_.size()) {
+    uint16_t version_count_plus_one = VersionCount() + 1;
+    if (version_count_plus_one < historical_versions_.size()) {
       return;
     }
 
@@ -293,7 +253,7 @@ class TxAware {
       // This is the simple case.
       TimeBoundary empty_boundary(0, 0);
       Version empty_version(not_present_value_, empty_boundary);
-      for (uint16_t i = 0; i <= version_count; i++) {
+      for (uint16_t i = 0; i < version_count_plus_one; i++) {
         historical_versions_.push_back(empty_version);
       }
     }
@@ -395,6 +355,51 @@ class TxAware {
     }
     *exists_at_time = false;
     return not_present_value_;
+  }
+
+  grpc::Status VerifyNoConflictingEdits(const Transaction* tx,
+                                        uint64_t edit_time) {
+    if (edit_tx_ != nullptr) {
+      Transaction::AtomicInfo edit_tx_info = edit_tx_->GetAtomicInfo();
+      switch(edit_tx_info.state) {
+        case Transaction::NOT_STARTED: // Intentional fall-through to next case.
+        case Transaction::READ:
+          break;
+        case Transaction::WRITE:
+          if (edit_tx_->id() != tx->id()) {
+            if (edit_tx_info.operation_start_time == edit_state_time_.time) {
+              return grpc::Status(grpc::StatusCode::ABORTED,
+                                  "concurrency exception.");
+            }
+            // If we reach here, the Transaction held in the edit information
+            // has been timed out and repurposed. We simply clear the current
+            // edit state (i.e., rolling back the change), and continue.
+            ClearEditState();
+          }
+          // re-entering edit of same value with the same transaction.
+          // While this might not be common behavior, it is perfectly valid in
+          // terms of transactional consistency.
+          break;
+        case Transaction::COMPLETING_WRITE:
+          CompleteWriteWithGuard(edit_tx_);
+          break;
+        case Transaction::COMMITTED: // Intentional fall-through to next case.
+          // If we reach here, we have probably encountered the cruft of
+          // a previously timed-out transaction where the transaction has
+          // since then been re-purposed and then committed.
+        case Transaction::ROLLED_BACK:
+          ClearEditState();
+          break;
+        default: return grpc::Status(grpc::StatusCode::INTERNAL,
+                                     "Coding issue. Did not fix switch.");
+      }
+    }
+    if (edit_time < current_value_times_.create ||
+        (current_value_times_.remove != acumio::time::END_OF_TIME &&
+         edit_time < current_value_times_.remove)) {
+      return grpc::Status(grpc::StatusCode::ABORTED, "concurrency exception.");
+    }
+    return grpc::Status::OK;
   }
 
   // If a process acquires both guard_ and versions_guard_, it must acquire
